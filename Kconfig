@@ -309,8 +309,8 @@ config ANDROID_BOOT_IMAGE
 
 config FIT
 	bool "Support Flattened Image Tree"
-	select MD5
-	select SHA1
+	select MD5 if !VENDOR_MC
+	select SHA1 if !VENDOR_MC
 	help
 	  This option allows you to boot the new uImage structure,
 	  Flattened Image Tree.  FIT is formally a FDT, which can include
@@ -347,11 +347,21 @@ config FIT_ENABLE_SHA256_SUPPORT
 	  SHA256 variant is supported: SHA512 and others are not currently
 	  supported in U-Boot.
 
+config FIT_FULL_CHECK
+	bool "Do a full check of the FIT before using it"
+	default y
+	help
+	  Enable this do a full check of the FIT to make sure it is valid. This
+	  helps to protect against carefully crafted FITs which take advantage
+	  of bugs or omissions in the code. This includes a bad structure,
+	  multiple root nodes and the like.
+
 config FIT_SIGNATURE
 	bool "Enable signature verification of FIT uImages"
 	depends on DM
 	select HASH
 	select RSA
+	select FIT_FULL_CHECK
 	help
 	  This option enables signature verification of FIT uImages,
 	  using a hash signed and verified using RSA. If
@@ -382,6 +392,14 @@ config FIT_ENABLE_RSASSA_PSS_SUPPORT
 	help
 	  Enable this to support the pss padding algorithm as described
 	  in the rfc8017 (https://tools.ietf.org/html/rfc8017).
+
+config FIT_CIPHER
+	bool "Enable ciphering data in a FIT uImages"
+	depends on DM
+	select AES
+	help
+	  Enable the feature of data ciphering/unciphering in the tool mkimage
+	  and in the u-boot support of the FIT image.
 
 config FIT_VERBOSE
 	bool "Show verbose messages when FIT images fail"
@@ -427,11 +445,20 @@ config SPL_FIT_PRINT
 	help
 	  Support printing the content of the fitImage in a verbose manner in SPL.
 
+config SPL_FIT_FULL_CHECK
+	bool "Do a full check of the FIT before using it"
+	help
+	  Enable this do a full check of the FIT to make sure it is valid. This
+	  helps to protect against carefully crafted FITs which take advantage
+	  of bugs or omissions in the code. This includes a bad structure,
+	  multiple root nodes and the like.
+
 config SPL_FIT_SIGNATURE
 	bool "Enable signature verification of FIT firmware within SPL"
 	depends on SPL_DM
 	select SPL_FIT
 	select SPL_RSA
+	select SPL_FIT_FULL_CHECK
 
 config SPL_LOAD_FIT
 	bool "Enable SPL loading U-Boot as a FIT (basic fitImage features)"
@@ -595,3 +622,5 @@ source "fs/Kconfig"
 source "lib/Kconfig"
 
 source "test/Kconfig"
+
+source "product/Kconfig"

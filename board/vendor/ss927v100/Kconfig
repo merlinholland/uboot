@@ -1,0 +1,15 @@
+if TARGET_SS927V100
+
+config SYS_BOARD
+	default "ss927v100"
+
+config SYS_VENDOR
+	default "vendor"
+
+config SYS_SOC
+	default "ss927v100"
+
+config SYS_CONFIG_NAME
+	default "ss927v100"
+
+endif

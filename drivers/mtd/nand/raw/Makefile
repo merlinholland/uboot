@@ -32,6 +32,9 @@ obj-y += nand_util.o
 obj-y += nand_ecc.o
 obj-y += nand_base.o
 obj-y += nand_timings.o
+obj-$(CONFIG_CMD_NAND) += nfc_common.o
+obj-$(CONFIG_FMC_SPI_NAND) += fmc100/
+obj-$(CONFIG_FMC_NAND) += fmc100_nand/
 
 endif # not spl
 

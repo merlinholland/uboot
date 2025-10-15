@@ -16,7 +16,7 @@ NAME =
 #   (this increases performance and avoids hard-to-debug behaviour);
 # o Look for make include files relative to root of kernel src
 MAKEFLAGS += -rR --include-dir=$(CURDIR)
-
+-include include/autoconf.mk
 # Determine host architecture
 include include/host_arch.h
 MK_ARCH="${shell uname -m}"
@@ -34,7 +34,7 @@ else ifeq ("riscv32", $(MK_ARCH))
 else ifeq ("riscv64", $(MK_ARCH))
   export HOST_ARCH=$(HOST_ARCH_RISCV64)
 endif
-undefine MK_ARCH
+#undefine MK_ARCH   #change open souce code warning
 
 # Avoid funny character set dependencies
 unexport LC_ALL
@@ -311,7 +311,7 @@ os_x_before	= $(shell if [ $(DARWIN_MAJOR_VERSION) -le $(1) -a \
 	$(DARWIN_MINOR_VERSION) -le $(2) ] ; then echo "$(3)"; else echo "$(4)"; fi ;)
 
 os_x_after = $(shell if [ $(DARWIN_MAJOR_VERSION) -ge $(1) -a \
-	$(DARWIN_MINOR_VERSION) -ge $(2) ] ; then echo "$(3)"; else echo "$(4)"; fi ;)	
+	$(DARWIN_MINOR_VERSION) -ge $(2) ] ; then echo "$(3)"; else echo "$(4)"; fi ;)
 
 # Snow Leopards build environment has no longer restrictions as described above
 HOSTCC       = $(call os_x_before, 10, 5, "cc", "gcc")
@@ -323,7 +323,7 @@ HOSTLDFLAGS += $(call os_x_before, 10, 5, "-multiply_defined suppress")
 # tools
 HOSTLDFLAGS += $(call os_x_before, 10, 7, "", "-Xlinker -no_pie")
 
-# macOS Mojave (10.14.X) 
+# macOS Mojave (10.14.X)
 # Undefined symbols for architecture x86_64: "_PyArg_ParseTuple"
 HOSTLDFLAGS += $(call os_x_after, 10, 14, "-lpython -dynamclib", "")
 endif
@@ -407,6 +407,7 @@ PYTHON3		= python3
 DTC		?= $(objtree)/scripts/dtc/dtc
 CHECK		= sparse
 
+HW_DIR		= hw_compressed
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void -D__CHECK_ENDIAN__ $(CF)
 
@@ -415,7 +416,8 @@ KBUILD_CPPFLAGS := -D__KERNEL__ -D__UBOOT__
 KBUILD_CFLAGS   := -Wall -Wstrict-prototypes \
 		   -Wno-format-security \
 		   -fno-builtin -ffreestanding $(CSTD_FLAG)
-KBUILD_CFLAGS	+= -fshort-wchar -fno-strict-aliasing
+# del -fshort-wchar Compiling Options change warning
+KBUILD_CFLAGS	+= -fno-strict-aliasing
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Don't generate position independent code
@@ -724,15 +726,15 @@ HAVE_VENDOR_COMMON_LIB = $(if $(wildcard $(srctree)/board/$(VENDOR)/common/Makef
 libs-y += lib/
 libs-$(HAVE_VENDOR_COMMON_LIB) += board/$(VENDOR)/common/
 libs-$(CONFIG_OF_EMBED) += dts/
-libs-y += fs/
-libs-y += net/
-libs-y += disk/
+libs-$(CONFIG_PARTITIONS) += fs/
+libs-$(CONFIG_NET) += net/
+libs-$(CONFIG_PARTITIONS) += disk/
 libs-y += drivers/
 libs-y += drivers/dma/
 libs-y += drivers/gpio/
 libs-y += drivers/i2c/
-libs-y += drivers/net/
-libs-y += drivers/net/phy/
+libs-$(CONFIG_NET) += drivers/net/
+libs-$(CONFIG_NET) += drivers/net/phy/
 libs-y += drivers/power/ \
 	drivers/power/domain/ \
 	drivers/power/fuel_gauge/ \
@@ -746,18 +748,19 @@ libs-$(CONFIG_SYS_FSL_DDR) += drivers/ddr/fsl/
 libs-$(CONFIG_SYS_FSL_MMDC) += drivers/ddr/fsl/
 libs-$(CONFIG_$(SPL_)ALTERA_SDRAM) += drivers/ddr/altera/
 libs-y += drivers/serial/
-libs-y += drivers/usb/cdns3/
-libs-y += drivers/usb/dwc3/
-libs-y += drivers/usb/common/
-libs-y += drivers/usb/emul/
-libs-y += drivers/usb/eth/
+libs-$(CONFIG_USB) += drivers/usb/cdns3/
+libs-$(CONFIG_USB) += drivers/usb/dwc3/
+libs-$(CONFIG_USB) += drivers/usb/common/
+libs-$(CONFIG_USB) += drivers/usb/emul/
+libs-$(CONFIG_USB) += drivers/usb/eth/
 libs-$(CONFIG_USB_GADGET) += drivers/usb/gadget/
 libs-$(CONFIG_USB_GADGET) += drivers/usb/gadget/udc/
-libs-y += drivers/usb/host/
-libs-y += drivers/usb/musb/
-libs-y += drivers/usb/musb-new/
-libs-y += drivers/usb/phy/
-libs-y += drivers/usb/ulpi/
+libs-$(CONFIG_USB_GADGET) += drivers/usb/gadget/udc3/
+libs-$(CONFIG_USB_HOST) += drivers/usb/host/
+libs-$(CONFIG_USB) += drivers/usb/musb/
+libs-$(CONFIG_USB) += drivers/usb/musb-new/
+libs-$(CONFIG_USB) += drivers/usb/phy/
+libs-$(CONFIG_USB) += drivers/usb/ulpi/
 libs-y += cmd/
 libs-y += common/
 libs-y += env/
@@ -767,6 +770,34 @@ libs-$(CONFIG_UNIT_TEST) += test/ test/dm/
 libs-$(CONFIG_UT_ENV) += test/env/
 libs-$(CONFIG_UT_OPTEE) += test/optee/
 libs-$(CONFIG_UT_OVERLAY) += test/overlay/
+# for ot_osd
+sinclude Makefile-otproduct
+
+export CONFIG_PRODUCTNAME
+
+ifdef CONFIG_CIPHER_ENABLE
+libs-$(CONFIG_CIPHER_ENABLE) += product/security_subsys/cipher/
+endif
+ifdef CONFIG_KLAD_ENABLE
+libs-$(CONFIG_KLAD_ENABLE) += product/security_subsys/klad/src/
+endif
+ifdef CONFIG_OTP_ENABLE
+libs-$(CONFIG_OTP_ENABLE) += product/security_subsys/otp/src/
+endif
+
+ifeq ($(CONFIG_PRODUCTNAME),$(filter $(CONFIG_PRODUCTNAME), "ss918v100" "ss318v100"))
+libs-$(CONFIG_OPTEE) += product/tzasc/
+endif
+
+libs-$(CONFIG_I2C_BSP) += product/i2c/
+
+libs-$(CONFIG_AUTO_UPDATE) += product/update/
+
+ifeq ($(CONFIG_SECURE_BOOT_SUPPORT),y)
+libs-y+= product/secureboot/
+endif
+
+libs-y += securec/src/
 
 libs-y += $(if $(BOARDDIR),board/$(BOARDDIR)/)
 
@@ -1148,7 +1179,16 @@ endif
 ifeq ($(CONFIG_MULTI_DTB_FIT),y)
 IMX_DEPS = u-boot-fit-dtb.bin
 endif
+.PHONY: u-boot-z.bin
+u-boot-z.bin: $(CURDIR)/u-boot.bin
+	make -C $(CURDIR)/arch/$(ARCH)/cpu/$(CPU)/$(SOC)/$(HW_DIR)/ \
+		CROSS_COMPILE=$(CROSS_COMPILE) \
+		BINIMAGE=$(CURDIR)/u-boot.bin TOPDIR=$(CURDIR)
 
+.PHONY: u-boot-z.clean
+u-boot-z.clean: $(CURDIR)/u-boot.bin
+	make -C $(CURDIR)/arch/$(ARCH)/cpu/$(CPU)/$(SOC)/$(HW_DIR) \
+		CROSS_COMPILE=$(CROSS_COMPILE) clean
 %.imx: $(IMX_DEPS) %.bin
 	$(Q)$(MAKE) $(build)=arch/arm/mach-imx $@
 	$(BOARD_SIZE_CHECK)
@@ -1755,7 +1795,12 @@ prepare0: archprepare FORCE
 	$(Q)$(MAKE) $(build)=.
 
 # All the preparing..
+ifdef CONFIG_DDR_TRAINING_V2
+prepare: ddr_training_prepare
+ddr_training_prepare: prepare0
+else
 prepare: prepare0
+endif
 
 # Generate some files
 # ---------------------------------------------------------------------------
@@ -1950,7 +1995,7 @@ PHONY += $(clean-dirs) clean archclean
 $(clean-dirs):
 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
 
-clean: $(clean-dirs)
+clean: $(clean-dirs) ddr_training_clean
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
 	@find $(if $(KBUILD_EXTMOD), $(KBUILD_EXTMOD), .) $(RCS_FIND_IGNORE) \
@@ -2163,6 +2208,26 @@ endif
 
 endif	# skip-makefile
 
+ifneq ($(filter $(CONFIG_PRODUCTNAME), "ss928v100" "ss927v100"),)
+DDRT_DEFAULT := default_v2
+else
+DDRT_DEFAULT := default
+endif
+
+DDR_SSRC := ddr_training_custom.h ddr_training_custom.c
+
+ddr_training_prepare:$(DDR_SSRC)
+	make -C $(srctree)/drivers/ddr/vendor/$(DDRT_DEFAULT)/cmd_bin all
+
+ddr_training_clean:
+	make -C $(srctree)/drivers/ddr/vendor/$(DDRT_DEFAULT)/cmd_bin clean
+	@for file in $(DDR_SSRC); \
+	do \
+		rm -f $(srctree)/drivers/ddr/vendor/$(DDRT_DEFAULT)/$$file; \
+	done
+	@if [ -f $(srctree)/ddr_cmd.bin ]; then rm  $(srctree)/ddr_cmd.bin; fi;
+$(DDR_SSRC):
+	ln -sf  ../$(SOC)/$@  $(CURDIR)/drivers/ddr/vendor/$(DDRT_DEFAULT)/$@
 PHONY += FORCE
 FORCE:
 

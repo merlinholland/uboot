@@ -89,8 +89,11 @@ __weak int pci_skip_dev(struct pci_controller *hose, pci_dev_t dev)
 		/*
 		 * Only skip configuration if "pciconfighost" is not set
 		 */
+#ifndef CONFIG_PCIE_BSP
 		if (env_get("pciconfighost") == NULL)
 			return 1;
+#endif
+			return 0;
 #else
 		return 1;
 #endif

@@ -207,7 +207,7 @@ void i2c_init_board(void)
  *
  * Returns I2C bus speed in Hz.
  */
-#if !defined(CONFIG_SYS_I2C) && !defined(CONFIG_DM_I2C)
+#if !defined(CONFIG_SYS_I2C) && !defined(CONFIG_DM_I2C) && !defined(CONFIG_I2C_BSP)
 /*
  * TODO: Implement architecture-specific get/set functions
  * Should go away, if we switched completely to new multibus support
@@ -246,10 +246,10 @@ int i2c_set_bus_speed(unsigned int speed)
  *
  * Returns the address length.
  */
-static uint get_alen(char *arg, int default_len)
+static uint get_alen(char *arg, uint default_len)
 {
-	int	j;
-	int	alen;
+	uint	j;
+	uint	alen;
 
 	alen = default_len;
 	for (j = 0; j < 8; j++) {
@@ -292,7 +292,7 @@ static int do_i2c_read ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv
 {
 	uint	chip;
 	uint	devaddr, length;
-	int alen;
+	uint	alen;
 	u_char  *memaddr;
 	int ret;
 #ifdef CONFIG_DM_I2C
@@ -345,7 +345,7 @@ static int do_i2c_write(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[
 {
 	uint	chip;
 	uint	devaddr, length;
-	int alen;
+	uint	alen;
 	u_char  *memaddr;
 	int ret;
 #ifdef CONFIG_DM_I2C
@@ -511,8 +511,8 @@ static int do_i2c_md ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 {
 	uint	chip;
 	uint	addr, length;
-	int alen;
-	int	j, nbytes, linebytes;
+	uint	alen;
+	uint	j, nbytes, linebytes;
 	int ret;
 #ifdef CONFIG_DM_I2C
 	struct udevice *dev;
@@ -630,9 +630,9 @@ static int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 {
 	uint	chip;
 	ulong	addr;
-	int	alen;
+	uint	alen;
 	uchar	byte;
-	int	count;
+	uint	count;
 	int ret;
 #ifdef CONFIG_DM_I2C
 	struct udevice *dev;
@@ -716,8 +716,8 @@ static int do_i2c_crc (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 {
 	uint	chip;
 	ulong	addr;
-	int	alen;
-	int	count;
+	uint	alen;
+	uint	count;
 	uchar	byte;
 	ulong	crc;
 	ulong	err;
@@ -1023,7 +1023,7 @@ static int do_i2c_probe (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv
 static int do_i2c_loop(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	uint	chip;
-	int alen;
+	uint	alen;
 	uint	addr;
 	uint	length;
 	u_char	bytes[16];
@@ -1801,7 +1801,7 @@ static int do_i2c_show_bus(cmd_tbl_t *cmdtp, int flag, int argc,
  * on error.
  */
 #if defined(CONFIG_SYS_I2C) || defined(CONFIG_I2C_MULTI_BUS) || \
-		defined(CONFIG_DM_I2C)
+		defined(CONFIG_DM_I2C) || defined(CONFIG_I2C_BSP)
 static int do_i2c_bus_num(cmd_tbl_t *cmdtp, int flag, int argc,
 				char * const argv[])
 {
@@ -1927,6 +1927,9 @@ static int do_i2c_nm(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
  */
 static int do_i2c_reset(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
+#ifdef CONFIG_I2C_BSP
+	printf("Error: Not supported!!\n");
+#else
 #if defined(CONFIG_DM_I2C)
 	struct udevice *bus;
 
@@ -1941,6 +1944,7 @@ static int do_i2c_reset(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv
 #else
 	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 #endif
+#endif /* CONFIG_I2C_BSP */
 	return 0;
 }
 
@@ -1950,7 +1954,7 @@ static cmd_tbl_t cmd_i2c_sub[] = {
 #endif
 	U_BOOT_CMD_MKENT(crc32, 3, 1, do_i2c_crc, "", ""),
 #if defined(CONFIG_SYS_I2C) || \
-	defined(CONFIG_I2C_MULTI_BUS) || defined(CONFIG_DM_I2C)
+	defined(CONFIG_I2C_MULTI_BUS) || defined(CONFIG_DM_I2C) || defined(CONFIG_I2C_BSP)
 	U_BOOT_CMD_MKENT(dev, 1, 1, do_i2c_bus_num, "", ""),
 #endif  /* CONFIG_I2C_MULTI_BUS */
 #if defined(CONFIG_I2C_EDID)
@@ -2027,7 +2031,7 @@ static char i2c_help_text[] =
 #endif
 	"crc32 chip address[.0, .1, .2] count - compute CRC32 checksum\n"
 #if defined(CONFIG_SYS_I2C) || \
-	defined(CONFIG_I2C_MULTI_BUS) || defined(CONFIG_DM_I2C)
+	defined(CONFIG_I2C_MULTI_BUS) || defined(CONFIG_DM_I2C) || defined(CONFIG_I2C_BSP)
 	"i2c dev [dev] - show or set current I2C bus\n"
 #endif  /* CONFIG_I2C_MULTI_BUS */
 #if defined(CONFIG_I2C_EDID)

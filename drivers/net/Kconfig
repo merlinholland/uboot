@@ -592,6 +592,18 @@ config HIGMACV300_ETH
 	  This driver supports HIGMACV300 Ethernet controller found on
 	  HiSilicon SoCs.
 
+config SFV300_ETH
+	bool "Fast Ethernet Controller"
+	help
+	  This driver supports SFV300 Ethernet controller found on
+	  SoCs.
+
+config GMACV300_ETH
+	bool "Gigabit Ethernet Controller"
+	help
+	  This driver supports GMACV300 Ethernet controller found on
+	  SoCs.
+
 config FSL_ENETC
 	bool "NXP ENETC Ethernet controller"
 	depends on DM_PCI && DM_ETH && DM_MDIO

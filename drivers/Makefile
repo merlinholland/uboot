@@ -89,6 +89,7 @@ obj-y += dfu/
 obj-$(CONFIG_PCH) += pch/
 obj-y += phy/allwinner/
 obj-y += phy/marvell/
+obj-y += phy/vendor/
 obj-y += rtc/
 obj-y += scsi/
 obj-y += sound/
@@ -115,4 +116,9 @@ obj-$(CONFIG_W1_EEPROM) += w1-eeprom/
 
 obj-$(CONFIG_MACH_PIC32) += ddr/microchip/
 obj-$(CONFIG_DM_HWSPINLOCK) += hwspinlock/
+endif
+ifneq ($(filter $(CONFIG_PRODUCTNAME), "ss928v100" "ss927v100"),)
+obj-$(CONFIG_DDR_TRAINING_V2) += ddr/vendor/default_v2/
+else
+obj-$(CONFIG_DDR_TRAINING_V2) += ddr/vendor/default/
 endif

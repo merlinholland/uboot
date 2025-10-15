@@ -88,7 +88,6 @@ switch_to_hypervisor_ret:
 	bl	cpu_init_crit
 #endif
 #endif
-
 	bl	_main
 
 /*------------------------------------------------------------------------------*/
@@ -120,7 +119,6 @@ ENTRY(save_boot_params)
 	b	save_boot_params_ret		@ back to my caller
 ENDPROC(save_boot_params)
 	.weak	save_boot_params
-
 #ifdef CONFIG_ARMV7_LPAE
 ENTRY(switch_to_hypervisor)
 	b	switch_to_hypervisor_ret

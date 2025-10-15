@@ -1,0 +1,100 @@
+# FOR AUDIO
+ifeq ($(CONFIG_AUDIO_ENABLE), y)
+ifeq ($(CONFIG_PRODUCTNAME),"ss101v200")
+libs-y += product/audio/acodec/v750/
+libs-y += product/audio/ao/ss101v200/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss101v500")
+libs-y += product/audio/acodec/v750/
+libs-y += product/audio/ao/ss101v200/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss101v300")
+libs-y += product/audio/acodec/v750/
+libs-y += product/audio/ao/ss101v200/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss101v600")
+libs-y += product/audio/acodec/v750/
+libs-y += product/audio/ao/ss101v200/
+endif
+endif
+
+ifeq ($(CONFIG_OSD_ENABLE),y)
+# FOR DEC of all chip
+ifneq ($(CONFIG_PRODUCTNAME),"ss101v200")
+ifneq ($(CONFIG_PRODUCTNAME),"ss101v500")
+ifneq ($(CONFIG_PRODUCTNAME),"ss101v300")
+ifneq ($(CONFIG_PRODUCTNAME),"ss101v600")
+libs-y += ./product/ot_osd/dec/
+endif
+endif
+endif
+endif
+
+# FOR VO,HDMI,MIPI_Tx of ss919v100
+ifeq ($(CONFIG_PRODUCTNAME),"ss919v100")
+libs-y += ./product/ot_osd/vo/ss919v100/
+libs-y += ./product/ot_osd/mipi_tx/ss919v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss918v100")
+libs-y += ./product/ot_osd/vo/ss918v100/
+libs-y += ./product/ot_osd/mipi_tx/ss918v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss013v100")
+libs-y += ./product/ot_osd/vo/ss918v100/
+libs-y += ./product/ot_osd/mipi_tx/ss918v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss812v100")
+libs-y += ./product/ot_osd/vo/ss812v100/
+libs-y += ./product/ot_osd/mipi_tx/ss812v100/
+libs-y += ./product/ot_osd/rgb/ss812v100/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss813v100")
+libs-y += ./product/ot_osd/vo/ss812v100/
+libs-y += ./product/ot_osd/mipi_tx/ss812v100/
+libs-y += ./product/ot_osd/rgb/ss812v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss815v100")
+libs-y += ./product/ot_osd/vo/ss812v100/
+libs-y += ./product/ot_osd/mipi_tx/ss812v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+libs-y += ./product/ot_osd/rgb/ss812v100/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss101v500")
+libs-y += ./product/ot_osd/vo/ss101v200/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss101v200")
+libs-y += ./product/ot_osd/vo/ss101v200/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss101v300")
+libs-y += ./product/ot_osd/vo/ss101v200/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss101v600")
+libs-y += ./product/ot_osd/vo/ss101v200/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss312v100")
+libs-y += ./product/ot_osd/vo/ss812v100/
+libs-y += ./product/ot_osd/mipi_tx/ss812v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+libs-y += ./product/ot_osd/rgb/ss812v100/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss313v100")
+libs-y += ./product/ot_osd/vo/ss812v100/
+libs-y += ./product/ot_osd/mipi_tx/ss812v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+libs-y += ./product/ot_osd/rgb/ss812v100/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss011v100")
+libs-y += ./product/ot_osd/vo/ss812v100/
+libs-y += ./product/ot_osd/mipi_tx/ss812v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+libs-y += ./product/ot_osd/rgb/ss812v100/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss012v100")
+libs-y += ./product/ot_osd/vo/ss812v100/
+libs-y += ./product/ot_osd/mipi_tx/ss812v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+libs-y += ./product/ot_osd/rgb/ss812v100/
+else ifeq ($(CONFIG_PRODUCTNAME),"ss015v100")
+libs-y += ./product/ot_osd/vo/ss919v100/
+libs-y += ./product/ot_osd/mipi_tx/ss919v100/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+else ifeq ($(CONFIG_PRODUCTNAME),$(filter $(CONFIG_PRODUCTNAME), "ss528v100" "ss625v100" "ss524v100" "ss522v101" "ss522v100" "ss615v100"))
+libs-y += ./product/ot_osd/vo/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+else ifeq ($(CONFIG_PRODUCTNAME),$(filter $(CONFIG_PRODUCTNAME), "ss928v100" "ss927v100"))
+libs-y += ./product/ot_osd/vo/
+libs-y += ./product/ot_osd/hdmi/hdmi_2_0/drv/
+libs-y += ./product/ot_osd/mipi_tx/ss928v100/
+else
+$(warning "warning: "$(CONFIG_PRODUCTNAME)" is invalid")
+endif
+
+endif # end of ifeq ($(CONFIG_OSD_ENABLE),y)

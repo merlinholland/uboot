@@ -31,6 +31,7 @@
 #include <nand.h>
 
 #include "legacy-mtd-utils.h"
+#include <nfc_common.h>
 
 #if defined(CONFIG_CMD_MTDPARTS)
 
@@ -39,6 +40,157 @@ int mtdparts_init(void);
 int find_dev_and_part(const char *id, struct mtd_device **dev,
 		      u8 *part_num, struct part_info **part);
 #endif
+
+/*
+ * fmc :
+ * v100: 2k4b 2k8b 2k24b 4k4b 4k8b 4k24b
+ */
+
+#define NFC_VER_VER          (0xFFF00000)
+
+#define SET_NFC_VER(_ver, _pagesize, _ecc) \
+	((((_ver) << 20) & NFC_VER_VER) | \
+	 (((_pagesize) & 0xFFFF) << 4) | ((_ecc) & 0xF))
+
+static unsigned int fmc100_support_yaffs2[] = {
+	SET_NFC_VER(FMC_VER_100, _2K, ET_ECC_4BIT),
+	SET_NFC_VER(FMC_VER_100, _2K, ET_ECC_8BIT),
+	SET_NFC_VER(FMC_VER_100, _2K, ET_ECC_24BIT1K),
+
+	SET_NFC_VER(FMC_VER_100, _4K, ET_ECC_4BIT),
+	SET_NFC_VER(FMC_VER_100, _4K, ET_ECC_8BIT),
+	SET_NFC_VER(FMC_VER_100, _4K, ET_ECC_24BIT1K),
+
+	SET_NFC_VER(FMC_VER_100, _8K, ET_ECC_24BIT1K),
+	SET_NFC_VER(FMC_VER_100, _8K, ET_ECC_40BIT1K),
+	SET_NFC_VER(FMC_VER_100, _8K, ET_ECC_64BIT1K),
+
+	SET_NFC_VER(FMC_VER_100, _16K, ET_ECC_40BIT1K),
+	SET_NFC_VER(FMC_VER_100, _16K, ET_ECC_64BIT1K),
+
+	0,
+};
+
+static unsigned int *get_support_yaffs2(unsigned int nandip)
+{
+	switch (nandip) {
+	default:
+	case FMC_VER_100:
+		return fmc100_support_yaffs2;
+	}
+}
+
+static unsigned int get_yaffs2_version(unsigned int nandip, int pagesize,
+		int ecc)
+{
+	int ix;
+	unsigned int *ver = get_support_yaffs2(nandip);
+	unsigned int tmp = SET_NFC_VER(0, (unsigned int)pagesize, (unsigned int)ecc);
+
+	for (ix = 0; ver[ix]; ix++) {
+		if ((ver[ix] & ~NFC_VER_VER) == tmp)
+			return ver[ix];
+	}
+
+	return 0;
+}
+
+static int yaffs_tag_check(unsigned char *buffer, unsigned int writesize,
+		unsigned int length)
+{
+	unsigned int ip_version = readl(CONFIG_FMC_REG_BASE + FMC_VERSION);
+	unsigned int nfc_yaff_ver;
+	unsigned int yaffs_yaff_ver;
+
+	static char *ecctype_str[] = { "0bit", "1bit", "4bit", "8bit", "24bits/1K",
+		"28bits/1K", "40bits/1K", "64bits/1K", "unknown"};
+
+	/* this follow must be consistent with mkyaffs2image !!! */
+	struct yaffs2_tag {
+#define YAFFS2_SIGN_MAGIC    "YFSS!V10"
+		unsigned char magic[8];
+		unsigned int nandip;
+		unsigned char yaffs2ver[4];
+		unsigned int pagesize;
+		unsigned int ecctype;
+	};
+
+	struct yaffs2_tag *tags = (struct yaffs2_tag *)buffer;
+	unsigned int ecctype;
+	int ret;
+
+	ret = nand_get_ecctype();
+	if (ret < 0) {
+		printf("Cannot get corret ecctype. \n");
+		return -1;
+	}
+	ecctype = (unsigned int)ret;
+
+	if (length < 512) {
+		printf("buffer length is too short.\n");
+		return -1;
+	}
+
+	if (memcmp(tags->magic, (unsigned char *)YAFFS2_SIGN_MAGIC, 8)) {
+		printf("!!! The yaffs2 filesystem image has no tag " \
+				"information.\n please update your mkyaffs2image" \
+				" tool, and remake yaffs2 filesystem image.\n");
+		return -1;
+	}
+
+	if (writesize != tags->pagesize) {
+		printf("!!! yaffs2 filesystem image pagesize(%d) is NOT" \
+				" consistent with hardware pagesize(%d).\n",
+				tags->pagesize, writesize);
+		goto fail;
+	}
+
+	if (ecctype != tags->ecctype) {
+		printf("!!! yaffs2 filesystem image ecctype(%s) is NOT" \
+				" consistent with hardware ecctype(%s).\n",
+				ecctype_str[tags->ecctype & 0xF],
+				ecctype_str[ecctype & 0xF]);
+		goto fail;
+	}
+
+	yaffs_yaff_ver = get_yaffs2_version(tags->nandip, writesize, ecctype);
+	if (!yaffs_yaff_ver) {
+		printf("!!! The yaffs2 filesystem image" \
+				" has invalid tag information.\n");
+		goto fail1;
+	}
+
+	/*
+	 * When write 8k40bit yaffs2 filesystem to nfc301,
+	 * It will print this error, because cpu not support.
+	 */
+	nfc_yaff_ver = get_yaffs2_version(ip_version, writesize,
+			ecctype);
+	if (!nfc_yaff_ver) {
+		printf("!!! The yaffs2 filesystem " \
+				"or mkyaffs2image for cpu ver(0x%X) " \
+				"But your demo board cpu ver(0x%X).\n",
+				tags->nandip, ip_version);
+		goto fail1;
+	}
+
+	    return 0;
+
+fail:
+		printf("Please remake yaffs2 filesystem image, " \
+				"make sure your yaffs2 filesystem image pagesize and ecctype" \
+				" is consistent with hardware config.\n");
+		printf("Current hardware config, pagesize:%d, ecctype:%s\n",
+				writesize, ecctype_str[ecctype & 0xF]);
+
+		return -1;
+fail1:
+		printf("1. Confirm your yaffs2 filesystem image version.\n" \
+				"2. Update your mkyaffs2image tool," \
+				" remake yaffs2 filesystem image.\n");
+
+		return -1;
+}
 
 static int nand_dump(struct mtd_info *mtd, ulong off, int only_oob,
 		     int repeat)
@@ -373,6 +525,16 @@ static void adjust_size_for_badblocks(loff_t *size, loff_t offset, int dev)
 	}
 }
 
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+unsigned long ticks2usec(unsigned long  ticks)
+{
+        ulong tbclk = get_tbclk();
+        tbclk/=1000000;
+        ticks /= tbclk;
+        return ((ulong)ticks);
+}
+#endif
+
 static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int i, ret = 0;
@@ -380,6 +542,10 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	loff_t off, size, maxsize;
 	char *cmd, *s;
 	struct mtd_info *mtd;
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+	unsigned long long time_s;
+	unsigned long long time_e;
+#endif
 #ifdef CONFIG_SYS_NAND_QUIET
 	int quiet = CONFIG_SYS_NAND_QUIET;
 #else
@@ -515,7 +681,9 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		opts.jffs2  = clean;
 		opts.quiet  = quiet;
 		opts.spread = spread;
-
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+		loff_t erase_size = opts.length;
+#endif
 		if (scrub) {
 			if (scrub_yes) {
 				opts.scrub = 1;
@@ -529,8 +697,18 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				}
 			}
 		}
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+		time_s=get_ticks();
+#endif
 		ret = nand_erase_opts(mtd, &opts);
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+		time_e=get_ticks();
+#endif
 		printf("%s\n", ret ? "ERROR" : "OK");
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+		printf("\nnand erase time ::time= %lu usec;speed: %lu KB/S\n",ticks2usec(time_e - time_s),
+                      (unsigned long)(erase_size >> 10)*1000000/ticks2usec(time_e - time_s));
+#endif
 
 		return ret == 0 ? 0 : 1;
 	}
@@ -606,6 +784,10 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		mtd = get_nand_dev_by_index(dev);
+		
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+ 		time_s=get_ticks();
+#endif
 
 		if (!s || !strcmp(s, ".jffs2") ||
 		    !strcmp(s, ".e") || !strcmp(s, ".i")) {
@@ -635,7 +817,9 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				.ooblen = rwsize,
 				.mode = MTD_OPS_RAW
 			};
-
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+			time_s=get_ticks();
+#endif
 			if (read)
 				ret = mtd_read_oob(mtd, off, &ops);
 			else
@@ -643,11 +827,51 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		} else if (raw) {
 			ret = raw_access(mtd, addr, off, pagecount, read,
 					 no_verify);
+		} else if ((s != NULL && !strcmp(s, ".yaffs"))) {
+			if (read) {
+				ret = nand_read_yaffs_skip_bad(mtd, off,
+						&rwsize, (u_char *)(uintptr_t)addr);
+			} else {
+				if (yaffs_tag_check((unsigned char *)(uintptr_t)addr,
+					mtd->writesize, size))
+					return 1;
+
+				ret = nand_write_yaffs_skip_bad(mtd, off,
+						&rwsize, (u_char *)(uintptr_t)addr);
+			}
+		} else if ((s != NULL && !strcmp(s, ".ecc0"))) {
+			ecc0_flag = 1;
+			if (read) {
+				ret = nand_read_yaffs_skip_bad(mtd, off,
+						&rwsize, (u_char *)(uintptr_t)addr);
+			} else {
+				ret = nand_write_yaffs_skip_bad(mtd, off,
+						&rwsize, (u_char *)(uintptr_t)addr);
+			}
+			ecc0_flag = 0;
+		} else if (((s != NULL && !strcmp(s, ".yaffsuc")))) {
+			if (read) {
+				printf("not support\n");
+				return 1;
+			} else
+				ret = nand_write_yaffs_skip_bad(mtd, off,
+						&rwsize, (u_char *)(uintptr_t)addr);
 		} else {
 			printf("Unknown nand command suffix '%s'.\n", s);
 			return 1;
 		}
+#ifdef CONFIG_VENDOR_SPIFLASH_SPEED
+		time_e=get_ticks();
+		unsigned long speed_kb=lldiv((size>>10)*1000000,ticks2usec(time_e-time_s));
+		unsigned int first_bit=lldiv(speed_kb,1024);
+		unsigned int second_bit=(speed_kb%1024)*10/1024;
+		unsigned int third_bit=((speed_kb%1024)*10%1024)*10/1024;
+		unsigned int forth_bit=(((speed_kb%1024)*10%1024)*10%1024)*10/1024;
 
+		printf("\nnand %s::time = %lu usec.\n,  size =  %lu KB, speed: %u.%u%u%u MB/S\n",
+			read ? "read" : "written", ticks2usec(time_e - time_s), (unsigned long)(size >> 10), 
+			first_bit,second_bit,third_bit,forth_bit);
+#endif
 		printf(" %zu bytes %s: %s\n", rwsize,
 		       read ? "read" : "written", ret ? "ERROR" : "OK");
 
@@ -799,6 +1023,17 @@ static char nand_help_text[] =
 	"nand read.raw - addr off|partition [count]\n"
 	"nand write.raw[.noverify] - addr off|partition [count]\n"
 	"    Use read.raw/write.raw to avoid ECC and access the flash as-is.\n"
+	"nand read.yaffs - addr off|partition size\n"
+	"nand write.yaffs - addr off|partition size\n"
+	"    read/write 'size' bytes starting at offset 'off'\n"
+	"    to/from memory address 'addr', skipping bad blocks.\n"
+	"nand write.yaffsuc - addr off|partition size\n"
+	"    read/write 'size' bytes starting at offset 'off'\n"
+	"    to/from memory address 'addr', skipping bad blocks.\n"
+	"nand read.ecc0 - addr off|partition size\n"
+	"nand write.ecc0 - addr off|partition size\n"
+	"    read/write 'size' bytes starting at offset 'off'\n"
+	"    to/from memory address 'addr', skipping bad blocks.\n"
 #ifdef CONFIG_CMD_NAND_TRIMFFS
 	"nand write.trimffs - addr off|partition size\n"
 	"    write 'size' bytes starting at offset 'off' from memory address\n"

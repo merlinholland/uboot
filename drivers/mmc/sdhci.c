@@ -22,6 +22,66 @@ void *aligned_buffer = (void *)CONFIG_FIXED_SDHCI_ALIGNED_BUFFER;
 void *aligned_buffer;
 #endif
 
+static void sdhci_dumpregs(struct sdhci_host *host)
+{
+	printf("=========== REGISTER DUMP (mmc%d)===========\n", host->index);
+
+	printf("Sys addr: 0x%08x | Version:  0x%08x\n",
+			sdhci_readl(host, SDHCI_DMA_ADDRESS),
+			sdhci_readw(host, SDHCI_HOST_VERSION));
+	printf("Blk size: 0x%08x | Blk cnt:  0x%08x\n",
+			sdhci_readw(host, SDHCI_BLOCK_SIZE),
+			sdhci_readw(host, SDHCI_BLOCK_COUNT));
+	printf("Argument: 0x%08x | Trn mode: 0x%08x\n",
+			sdhci_readl(host, SDHCI_ARGUMENT),
+			sdhci_readw(host, SDHCI_TRANSFER_MODE));
+	printf("Present:  0x%08x | Host ctl: 0x%08x\n",
+			sdhci_readl(host, SDHCI_PRESENT_STATE),
+			sdhci_readb(host, SDHCI_HOST_CONTROL));
+	printf("Power:    0x%08x | Blk gap:  0x%08x\n",
+			sdhci_readb(host, SDHCI_POWER_CONTROL),
+			sdhci_readb(host, SDHCI_BLOCK_GAP_CONTROL));
+	printf("Wake-up:  0x%08x | Clock:    0x%08x\n",
+			sdhci_readb(host, SDHCI_WAKE_UP_CONTROL),
+			sdhci_readw(host, SDHCI_CLOCK_CONTROL));
+	printf("Timeout:  0x%08x | Int stat: 0x%08x\n",
+			sdhci_readb(host, SDHCI_TIMEOUT_CONTROL),
+			sdhci_readl(host, SDHCI_INT_STATUS));
+	printf("Int enab: 0x%08x | Sig enab: 0x%08x\n",
+			sdhci_readl(host, SDHCI_INT_ENABLE),
+			sdhci_readl(host, SDHCI_SIGNAL_ENABLE));
+	printf("ACMD stat:0x%08x | Slot int: 0x%08x\n",
+			sdhci_readw(host, SDHCI_ACMD12_ERR),
+			sdhci_readw(host, SDHCI_SLOT_INT_STATUS));
+	printf("Caps:     0x%08x | Caps_1:   0x%08x\n",
+			sdhci_readl(host, SDHCI_CAPABILITIES),
+			sdhci_readl(host, SDHCI_CAPABILITIES_1));
+	printf("Cmd:      0x%08x | Max curr: 0x%08x\n",
+			sdhci_readw(host, SDHCI_COMMAND),
+			sdhci_readl(host, SDHCI_MAX_CURRENT));
+	printf("Resp[0]:   0x%08x | Resp[1]:  0x%08x\n",
+			sdhci_readl(host, SDHCI_RESPONSE),
+			sdhci_readl(host, SDHCI_RESPONSE + 4));
+	printf("Resp[2]:   0x%08x | Resp[3]:  0x%08x\n",
+			sdhci_readl(host, SDHCI_RESPONSE + 8),
+			sdhci_readl(host, SDHCI_RESPONSE + 12));
+	printf("Host ctl2:0x%08x\n",
+			sdhci_readw(host, SDHCI_HOST_CONTROL2));
+
+	if (host->flags & USE_ADMA64) {
+		printf("ADMA Err:  0x%08x | ADMA Ptr: 0x%08x%08x\n",
+				sdhci_readl(host, SDHCI_ADMA_ERROR),
+			sdhci_readl(host, SDHCI_ADMA_ADDRESS_HI),
+			sdhci_readl(host, SDHCI_ADMA_ADDRESS));
+	} else if (host->flags & USE_ADMA) {
+		printf("ADMA Err:  0x%08x | ADMA Ptr: 0x%08x\n",
+				sdhci_readl(host, SDHCI_ADMA_ERROR),
+				sdhci_readl(host, SDHCI_ADMA_ADDRESS));
+	}
+
+	printf("===========================================\n");
+}
+
 static void sdhci_reset(struct sdhci_host *host, u8 mask)
 {
 	unsigned long timeout;
@@ -71,7 +131,7 @@ static void sdhci_transfer_pio(struct sdhci_host *host, struct mmc_data *data)
 }
 
 #if CONFIG_IS_ENABLED(MMC_SDHCI_ADMA)
-static void sdhci_adma_desc(struct sdhci_host *host, char *buf, u16 len,
+static void _sdhci_adma_desc(struct sdhci_host *host, char *buf, u16 len,
 			    bool end)
 {
 	struct sdhci_adma_desc *desc;
@@ -92,6 +152,23 @@ static void sdhci_adma_desc(struct sdhci_host *host, char *buf, u16 len,
 #ifdef CONFIG_DMA_ADDR_T_64BIT
 	desc->addr_hi = (u64)buf >> 32;
 #endif
+}
+
+static void sdhci_adma_desc(struct sdhci_host *host, char *buf, u16 len,
+			    bool end)
+{
+	u16 split_len;
+
+	if (((uintptr_t)buf & (SDHCI_DMA_BOUNDARY_SIZE - 1)) + len >
+		SDHCI_DMA_BOUNDARY_SIZE) {
+		split_len = SDHCI_DMA_BOUNDARY_SIZE -
+			    ((uintptr_t)buf & (SDHCI_DMA_BOUNDARY_SIZE - 1));
+		_sdhci_adma_desc(host, buf, split_len, false);
+		buf += split_len;
+		len -= split_len;
+	}
+
+	_sdhci_adma_desc(host, buf, len, end);
 }
 
 static void sdhci_prepare_adma_table(struct sdhci_host *host,
@@ -118,7 +195,7 @@ static void sdhci_prepare_adma_table(struct sdhci_host *host,
 	sdhci_adma_desc(host, buf, trans_bytes, true);
 
 	flush_cache((dma_addr_t)host->adma_desc_table,
-		    ROUND(desc_count * sizeof(struct sdhci_adma_desc),
+		    ROUND((host->desc_slot + 1) * sizeof(struct sdhci_adma_desc),
 			  ARCH_DMA_MINALIGN));
 }
 #elif defined(CONFIG_MMC_SDHCI_SDMA)
@@ -175,7 +252,7 @@ static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
 				     SDHCI_ADMA_ADDRESS_HI);
 	}
 
-	flush_cache(host->start_addr, ROUND(trans_bytes, ARCH_DMA_MINALIGN));
+	flush_cache(rounddown(host->start_addr, ARCH_DMA_MINALIGN), roundup(trans_bytes + ARCH_DMA_MINALIGN, ARCH_DMA_MINALIGN));
 }
 #else
 static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
@@ -194,8 +271,11 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 	do {
 		stat = sdhci_readl(host, SDHCI_INT_STATUS);
 		if (stat & SDHCI_INT_ERROR) {
-			pr_debug("%s: Error detected in status(0x%X)!\n",
-				 __func__, stat);
+			if (!host->is_tuning) {
+				pr_debug("%s: Error detected in status(0x%X)!\n",
+						__func__, stat);
+				sdhci_dumpregs(host);
+			}
 			return -EIO;
 		}
 		if (!transfer_done && (stat & rdy)) {
@@ -228,6 +308,7 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 			udelay(10);
 		else {
 			printf("%s: Transfer data timeout\n", __func__);
+			sdhci_dumpregs(host);
 			return -ETIMEDOUT;
 		}
 	} while (!(stat & SDHCI_INT_DATA_END));
@@ -393,21 +474,47 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		return -ECOMM;
 }
 
-#if defined(CONFIG_DM_MMC) && defined(MMC_SUPPORTS_TUNING)
+static void sdhci_hs400_enhanced_stobe(struct mmc *mmc, bool enable)
+{
+	struct sdhci_host *host = mmc->priv;
+	u32 ctrl;
+
+	ctrl = sdhci_readl(host, SDHCI_EMMC_CTRL);
+	if (enable)
+		ctrl |= SDHCI_ENH_STROBE_EN;
+	else
+		ctrl &= ~SDHCI_ENH_STROBE_EN;
+
+	sdhci_writel(host, ctrl, SDHCI_EMMC_CTRL);
+
+/* SS101V600 SS101V500 SDHCI_MULTI_CYCLE bit2 need be set in HS400ES mode */
+#if defined(CONFIG_TARGET_SS101V600) || defined(CONFIG_TARGET_SS101V500)
+	ctrl  = sdhci_readl(host, SDHCI_MULTI_CYCLE);
+	if (enable)
+		ctrl |= SDHCI_CMD_DLY_EN;
+	else
+		ctrl &= ~SDHCI_CMD_DLY_EN;
+
+	sdhci_writel(host, ctrl, SDHCI_MULTI_CYCLE);
+#endif
+}
+
+#if defined(MMC_SUPPORTS_TUNING)
+#if defined(CONFIG_DM_MMC)
 static int sdhci_execute_tuning(struct udevice *dev, uint opcode)
 {
-	int err;
 	struct mmc *mmc = mmc_get_mmc_dev(dev);
+#else
+static int sdhci_execute_tuning(struct mmc *mmc, uint opcode)
+{
+#endif
 	struct sdhci_host *host = mmc->priv;
 
 	debug("%s\n", __func__);
 
-	if (host->ops && host->ops->platform_execute_tuning) {
-		err = host->ops->platform_execute_tuning(mmc, opcode);
-		if (err)
-			return err;
-		return 0;
-	}
+	if (host->execute_tuning)
+		return host->execute_tuning(host, opcode);
+
 	return 0;
 }
 #endif
@@ -478,8 +585,8 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		div >>= 1;
 	}
 
-	if (host->ops && host->ops->set_clock)
-		host->ops->set_clock(host, div);
+	if (host->set_clock)
+		return host->set_clock(host, clock);
 
 	clk |= (div & SDHCI_DIV_MASK) << SDHCI_DIVIDER_SHIFT;
 	clk |= ((div & SDHCI_DIV_HI_MASK) >> SDHCI_DIV_MASK_LEN)
@@ -544,8 +651,13 @@ void sdhci_set_uhs_timing(struct sdhci_host *host)
 	reg &= ~SDHCI_CTRL_UHS_MASK;
 
 	switch (mmc->selected_mode) {
-	case UHS_SDR50:
+	case MMC_HS:
 	case MMC_HS_52:
+	case SD_HS:
+	case UHS_SDR25:
+		reg |= SDHCI_CTRL_UHS_SDR25;
+		break;
+	case UHS_SDR50:
 		reg |= SDHCI_CTRL_UHS_SDR50;
 		break;
 	case UHS_DDR50:
@@ -555,6 +667,10 @@ void sdhci_set_uhs_timing(struct sdhci_host *host)
 	case UHS_SDR104:
 	case MMC_HS_200:
 		reg |= SDHCI_CTRL_UHS_SDR104;
+		break;
+	case MMC_HS_400:
+	case MMC_HS_400_ES:
+		reg |= SDHCI_CTRL_HS400;
 		break;
 	default:
 		reg |= SDHCI_CTRL_UHS_SDR12;
@@ -574,8 +690,8 @@ static int sdhci_set_ios(struct mmc *mmc)
 	u32 ctrl;
 	struct sdhci_host *host = mmc->priv;
 
-	if (host->ops && host->ops->set_control_reg)
-		host->ops->set_control_reg(host);
+	if (host->set_control_reg)
+		host->set_control_reg(host);
 
 	if (mmc->clock != host->clock)
 		sdhci_set_clock(mmc, mmc->clock);
@@ -641,6 +757,9 @@ static int sdhci_init(struct mmc *mmc)
 
 	sdhci_set_power(host, fls(mmc->cfg->voltages) - 1);
 
+	if (host->priv_init)
+		host->priv_init(host);
+
 	if (host->ops && host->ops->get_cd)
 		host->ops->get_cd(host);
 
@@ -704,6 +823,10 @@ static const struct mmc_ops sdhci_ops = {
 	.send_cmd	= sdhci_send_command,
 	.set_ios	= sdhci_set_ios,
 	.init		= sdhci_init,
+#ifdef MMC_SUPPORTS_TUNING
+	.execute_tuning	= sdhci_execute_tuning,
+#endif
+	.hs400_enable_es = sdhci_hs400_enhanced_stobe,
 };
 #endif
 

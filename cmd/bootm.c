@@ -22,7 +22,7 @@
 #include <mapmem.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
+#define TEE_ENABLE "tee_enable"
 #if defined(CONFIG_CMD_IMI)
 static int image_info(unsigned long addr);
 #endif
@@ -35,6 +35,10 @@ extern flash_info_t flash_info[]; /* info for FLASH chips */
 
 #if defined(CONFIG_CMD_IMLS) || defined(CONFIG_CMD_IMLS_NAND)
 static int do_imls(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+#endif
+
+#ifdef CONFIG_CMD_USB
+#include <usb.h>
 #endif
 
 /* we overload the cmd field with our state machine info instead of a
@@ -85,12 +89,62 @@ static int do_bootm_subcommand(cmd_tbl_t *cmdtp, int flag, int argc,
 	return ret;
 }
 
+#if defined(CONFIG_TARGET_SS928V100) || defined(CONFIG_TARGET_SS927V100)
+extern int is_tee_enable_otp(void);
+int tee_start_flow_enable(void)
+{
+	char *bootargs = NULL;
+
+	bootargs = env_get("bootargs");
+	if (((bootargs == NULL)) || (strstr(bootargs ,TEE_ENABLE) == NULL))
+		return 0;
+
+	if (!is_tee_enable_otp()) {
+		printf("tee distable int otp\n");
+		return 0;
+	}
+
+	return 1;
+}
+
+#endif
+
 /*******************************************************************/
 /* bootm - boot application image from image in memory */
 /*******************************************************************/
 
 int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
+#ifdef CONFIG_CMD_USB
+	usb_stop();
+#endif
+
+#if defined(CONFIG_TARGET_SS928V100) || defined(CONFIG_TARGET_SS927V100)
+	extern int load_fip_secure_os(char *common_os, char *secure_os);
+	extern long long kernel_load_addr;
+	if (0 != tee_start_flow_enable())  {
+		char *common_os = (char *)(uintptr_t)simple_strtoul(argv[1], NULL, 16);
+		char *secure_os = (char *)(uintptr_t)simple_strtoul(argv[2], NULL, 16);
+		kernel_load_addr = CONFIG_KERNEL_LOAD_ADDR;
+		return load_fip_secure_os(common_os, secure_os);
+	}
+#endif
+
+#ifdef CONFIG_ARM64_SUPPORT_LOAD_FIP
+	extern int is_fip(const char *buf);
+	extern int load_fip(char *buf);
+	extern int load_fip_amp(char *buf);
+	extern long long kernel_load_addr;
+	if (argc == 2) {
+		char *buf = (char *)(uintptr_t)simple_strtoul(argv[1], NULL, 16);
+	/* Modify this configuration according to the system framework */
+		kernel_load_addr = CONFIG_KERNEL_LOAD_ADDR;
+		if (is_fip(buf)) {
+			return load_fip(buf);
+		}
+	}
+#endif
+
 #ifdef CONFIG_NEEDS_MANUAL_RELOC
 	static int relocated = 0;
 

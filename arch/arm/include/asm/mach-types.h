@@ -5051,4 +5051,27 @@
 #define MACH_TYPE_NASM25               5112
 #define MACH_TYPE_TOMATO               5113
 #define MACH_TYPE_OMAP3_MRC3D          5114
+#define MACH_TYPE_SS919V100          8000
+#define MACH_TYPE_SS812V100	       8000
+#define MACH_TYPE_SS813V100	       8000
+#define MACH_TYPE_SS815V100	       8000
+#define MACH_TYPE_SS312V100	       8000
+#define MACH_TYPE_SS313V100	       8000
+#define MACH_TYPE_SS011V100	       8000
+#define MACH_TYPE_SS012V100	       8000
+#define MACH_TYPE_SS318V100          8000
+#define MACH_TYPE_SS918V100          8000
+#define MACH_TYPE_SS101V200	       8000
+#define MACH_TYPE_SS101V500	       8000
+#define MACH_TYPE_SS101V300	       8000
+#define MACH_TYPE_SS101V600	       8000
+#define MACH_TYPE_SS528V100          8000
+#define MACH_TYPE_SS625V100          8000
+#define MACH_TYPE_SS524V100	       8000
+#define MACH_TYPE_SS522V100	       8000
+#define MACH_TYPE_SS522V101	       8000
+#define MACH_TYPE_SS615V100	       8000
+#define MACH_TYPE_SS013V100           8000
+#define MACH_TYPE_SS928V100           8000
+
 #endif

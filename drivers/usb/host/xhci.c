@@ -30,6 +30,7 @@
 #include <asm/unaligned.h>
 #include <linux/errno.h>
 #include <usb/xhci.h>
+#include "../drivers/phy/vendor/usb.h"
 
 #ifndef CONFIG_USB_MAX_CONTROLLER_COUNT
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 1
@@ -1300,6 +1301,8 @@ int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
 	int ret;
 
 	*controller = NULL;
+
+	phy_usb_init(index);
 
 	if (xhci_hcd_init(index, &hccr, (struct xhci_hcor **)&hcor) != 0)
 		return -ENODEV;

@@ -26,6 +26,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #include <bootm.h>
 #include <image.h>
 #include <bootstage.h>
+#include <linux/kconfig.h>
 #include <u-boot/crc.h>
 #include <u-boot/md5.h>
 #include <u-boot/sha1.h>
@@ -168,7 +169,7 @@ static void fit_image_print_data(const void *fit, int noffset, const char *p,
 	int value_len;
 	char *algo;
 	const char *padding;
-	int required;
+	bool required;
 	int ret, i;
 
 	debug("%s  %s node:    '%s'\n", p, type,
@@ -179,8 +180,8 @@ static void fit_image_print_data(const void *fit, int noffset, const char *p,
 		return;
 	}
 	printf("%s", algo);
-	keyname = fdt_getprop(fit, noffset, "key-name-hint", NULL);
-	required = fdt_getprop(fit, noffset, "required", NULL) != NULL;
+	keyname = fdt_getprop(fit, noffset, FIT_KEY_HINT, NULL);
+	required = fdt_getprop(fit, noffset, FIT_KEY_REQUIRED, NULL) != NULL;
 	if (keyname)
 		printf(":%s", keyname);
 	if (required)
@@ -948,6 +949,31 @@ int fit_image_get_data_size(const void *fit, int noffset, int *data_size)
 }
 
 /**
+ * Get 'data-size-unciphered' property from a given image node.
+ *
+ * @fit: pointer to the FIT image header
+ * @noffset: component image node offset
+ * @data_size: holds the data-size property
+ *
+ * returns:
+ *     0, on success
+ *     -ENOENT if the property could not be found
+ */
+int fit_image_get_data_size_unciphered(const void *fit, int noffset,
+				       size_t *data_size)
+{
+	const fdt32_t *val;
+
+	val = fdt_getprop(fit, noffset, "data-size-unciphered", NULL);
+	if (!val)
+		return -ENOENT;
+
+	*data_size = (size_t)fdt32_to_cpu(*val);
+
+	return 0;
+}
+
+/**
  * fit_image_get_data_and_size - get data and its size including
  *				 both embedded and external data
  * @fit: pointer to the FIT format image header
@@ -1080,6 +1106,33 @@ static int fit_image_hash_get_ignore(const void *fit, int noffset, int *ignore)
 	return 0;
 }
 
+/**
+ * fit_image_cipher_get_algo - get cipher algorithm name
+ * @fit: pointer to the FIT format image header
+ * @noffset: cipher node offset
+ * @algo: double pointer to char, will hold pointer to the algorithm name
+ *
+ * fit_image_cipher_get_algo() finds cipher algorithm property in a given
+ * cipher node. If the property is found its data start address is returned
+ * to the caller.
+ *
+ * returns:
+ *     0, on success
+ *     -1, on failure
+ */
+int fit_image_cipher_get_algo(const void *fit, int noffset, char **algo)
+{
+	int len;
+
+	*algo = (char *)fdt_getprop(fit, noffset, FIT_ALGO_PROP, &len);
+	if (!*algo) {
+		fit_get_debug(fit, noffset, FIT_ALGO_PROP, len);
+		return -1;
+	}
+
+	return 0;
+}
+
 ulong fit_get_end(const void *fit)
 {
 	return map_to_sysmem((void *)(fit + fdt_totalsize(fit)));
@@ -1143,16 +1196,31 @@ int calculate_hash(const void *data, int data_len, const char *algo,
 		*((uint32_t *)value) = cpu_to_uimage(*((uint32_t *)value));
 		*value_len = 4;
 	} else if (IMAGE_ENABLE_SHA1 && strcmp(algo, "sha1") == 0) {
+#ifdef CONFIG_SHA1
 		sha1_csum_wd((unsigned char *)data, data_len,
-			     (unsigned char *)value, CHUNKSZ_SHA1);
+				(unsigned char *)value, CHUNKSZ_SHA1);
 		*value_len = 20;
+#else
+		debug("Unsupported hash sha1 alogrithm\n");
+		return -1;
+#endif
 	} else if (IMAGE_ENABLE_SHA256 && strcmp(algo, "sha256") == 0) {
+#ifdef CONFIG_SHA256
 		sha256_csum_wd((unsigned char *)data, data_len,
 			       (unsigned char *)value, CHUNKSZ_SHA256);
 		*value_len = SHA256_SUM_LEN;
+#else
+		debug("Unsupported hash sha256 alogrithm\n");
+		return -1;
+#endif
 	} else if (IMAGE_ENABLE_MD5 && strcmp(algo, "md5") == 0) {
+#ifdef CONFIG_MD5
 		md5_wd((unsigned char *)data, data_len, value, CHUNKSZ_MD5);
 		*value_len = 16;
+#else
+		debug("Unsupported hash mad5 alogrithm\n");
+		return -1;
+#endif
 	} else {
 		debug("Unsupported hash alogrithm\n");
 		return -1;
@@ -1287,21 +1355,31 @@ error:
  */
 int fit_image_verify(const void *fit, int image_noffset)
 {
+	const char *name = fit_get_name(fit, image_noffset, NULL);
 	const void	*data;
 	size_t		size;
-	int		noffset = 0;
 	char		*err_msg = "";
 
+	if (strchr(name, '@')) {
+		/*
+		 * We don't support this since libfdt considers names with the
+		 * name root but different @ suffix to be equal
+		 */
+		err_msg = "Node name contains @";
+		goto err;
+	}
 	/* Get image data and data length */
 	if (fit_image_get_data_and_size(fit, image_noffset, &data, &size)) {
 		err_msg = "Can't get image data/size";
-		printf("error!\n%s for '%s' hash node in '%s' image node\n",
-		       err_msg, fit_get_name(fit, noffset, NULL),
-		       fit_get_name(fit, image_noffset, NULL));
-		return 0;
+		goto err;
 	}
 
 	return fit_image_verify_with_data(fit, image_noffset, data, size);
+
+err:
+	printf("error!\n%s in '%s' image node\n", err_msg,
+	       fit_get_name(fit, image_noffset, NULL));
+	return 0;
 }
 
 /**
@@ -1353,6 +1431,32 @@ int fit_all_image_verify(const void *fit)
 	}
 	return 1;
 }
+
+#ifdef CONFIG_FIT_CIPHER
+static int fit_image_uncipher(const void *fit, int image_noffset,
+			      void **data, size_t *size)
+{
+	int cipher_noffset, ret;
+	void *dst;
+	size_t size_dst;
+
+	cipher_noffset = fdt_subnode_offset(fit, image_noffset,
+					    FIT_CIPHER_NODENAME);
+	if (cipher_noffset < 0)
+		return 0;
+
+	ret = fit_image_decrypt_data(fit, image_noffset, cipher_noffset,
+				     *data, *size, &dst, &size_dst);
+	if (ret)
+		goto out;
+
+	*data = dst;
+	*size = size_dst;
+
+ out:
+	return ret;
+}
+#endif /* CONFIG_FIT_CIPHER */
 
 /**
  * fit_image_check_os - check whether image node is of a given os type
@@ -1452,6 +1556,34 @@ int fit_image_check_comp(const void *fit, int noffset, uint8_t comp)
 }
 
 /**
+ * fdt_check_no_at() - Check for nodes whose names contain '@'
+ *
+ * This checks the parent node and all subnodes recursively
+ *
+ * @fit: FIT to check
+ * @parent: Parent node to check
+ * @return 0 if OK, -EADDRNOTAVAIL is a node has a name containing '@'
+ */
+static int fdt_check_no_at(const void *fit, int parent)
+{
+	const char *name;
+	int node;
+	int ret;
+
+	name = fdt_get_name(fit, parent, NULL);
+	if (!name || strchr(name, '@'))
+		return -EADDRNOTAVAIL;
+
+	fdt_for_each_subnode(node, fit, parent) {
+		ret = fdt_check_no_at(fit, node);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+/**
  * fit_check_format - sanity check FIT image format
  * @fit: pointer to the FIT format image header
  *
@@ -1464,6 +1596,49 @@ int fit_image_check_comp(const void *fit, int noffset, uint8_t comp)
  */
 int fit_check_format(const void *fit)
 {
+	int ret;
+	ulong size;
+
+	/* A FIT image must be a valid FDT */
+	ret = fdt_check_header(fit);
+	if (ret) {
+		debug("Wrong FIT format: not a flattened device tree (err=%d)\n",
+			  ret);
+		return -ENOEXEC;
+	}
+
+	if (CONFIG_IS_ENABLED(FIT_FULL_CHECK)) {
+		/*
+		 * If we are not given the size, make do wtih calculating it.
+		 * This is not as secure, so we should consider a flag to
+		 * control this.
+		 */
+		size = fdt_totalsize(fit);
+		ret = fdt_check_full(fit, size);
+		if (ret)
+			ret = -EINVAL;
+
+		/*
+		 * U-Boot stopped using unit addressed in 2017. Since libfdt
+		 * can match nodes ignoring any unit address, signature
+		 * verification can see the wrong node if one is inserted with
+		 * the same name as a valid node but with a unit address
+		 * attached. Protect against this by disallowing unit addresses.
+		 */
+		if (!ret && CONFIG_IS_ENABLED(FIT_SIGNATURE)) {
+			ret = fdt_check_no_at(fit, 0);
+
+			if (ret) {
+				debug("FIT check error %d\n", ret);
+				return ret;
+			}
+		}
+		if (ret) {
+			debug("FIT check error %d\n", ret);
+			return ret;
+		}
+	}
+
 	/* mandatory / node 'description' property */
 	if (fdt_getprop(fit, 0, FIT_DESC_PROP, NULL) == NULL) {
 		debug("Wrong FIT format: no description\n");
@@ -1632,24 +1807,6 @@ int fit_conf_find_compat(const void *fit, const void *fdt)
 	return best_match_offset;
 }
 
-/**
- * fit_conf_get_node - get node offset for configuration of a given unit name
- * @fit: pointer to the FIT format image header
- * @conf_uname: configuration node unit name
- *
- * fit_conf_get_node() finds a configuration (within the '/configurations'
- * parent node) of a provided unit name. If configuration is found its node
- * offset is returned to the caller.
- *
- * When NULL is provided in second argument fit_conf_get_node() will search
- * for a default configuration node instead. Default configuration node unit
- * name is retrieved from FIT_DEFAULT_PROP property of the '/configurations'
- * node.
- *
- * returns:
- *     configuration node offset when found (>=0)
- *     negative number on failure (FDT_ERR_* code)
- */
 int fit_conf_get_node(const void *fit, const char *conf_uname)
 {
 	int noffset, confs_noffset;
@@ -1835,10 +1992,13 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 	printf("## Loading %s from FIT Image at %08lx ...\n", prop_name, addr);
 
 	bootstage_mark(bootstage_id + BOOTSTAGE_SUB_FORMAT);
-	if (!fit_check_format(fit)) {
-		printf("Bad FIT %s image format!\n", prop_name);
+	ret = fit_check_format(fit);
+	if (ret) {
+		printf("Bad FIT %s image format! (err=%d)\n", prop_name, ret);
+		if (CONFIG_IS_ENABLED(FIT_SIGNATURE) && ret == -EADDRNOTAVAIL)
+			printf("Signature checking prevents use of unit addresses (@) in nodes\n");
 		bootstage_error(bootstage_id + BOOTSTAGE_SUB_FORMAT);
-		return -ENOEXEC;
+		return ret;
 	}
 	bootstage_mark(bootstage_id + BOOTSTAGE_SUB_FORMAT_OK);
 	if (fit_uname) {
@@ -1889,7 +2049,7 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 		fit_uname = fit_get_name(fit, noffset, NULL);
 	}
 	if (noffset < 0) {
-		puts("Could not find subimage node\n");
+		printf("Could not find subimage node type '%s'\n", prop_name);
 		bootstage_error(bootstage_id + BOOTSTAGE_SUB_SUBNODE);
 		return -ENOENT;
 	}
@@ -1952,6 +2112,18 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 		bootstage_error(bootstage_id + BOOTSTAGE_SUB_GET_DATA);
 		return -ENOENT;
 	}
+
+#ifdef CONFIG_FIT_CIPHER
+	/* Decrypt data before uncompress/move */
+	if (IMAGE_ENABLE_DECRYPT) {
+		puts("   Decrypting Data ... ");
+		if (fit_image_uncipher(fit, noffset, &buf, &size)) {
+			puts("Error\n");
+			return -EACCES;
+		}
+		puts("OK\n");
+	}
+#endif
 
 #if !defined(USE_HOSTCC) && defined(CONFIG_FIT_IMAGE_POST_PROCESS)
 	/* perform any post-processing on the image data */

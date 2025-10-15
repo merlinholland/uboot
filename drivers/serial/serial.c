@@ -11,6 +11,7 @@
 #include <post.h>
 #include <linux/compiler.h>
 #include <errno.h>
+#include <usb.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -446,6 +447,9 @@ void serial_puts(const char *s)
  */
 void default_serial_puts(const char *s)
 {
+#ifdef CONFIG_USB_GADGET
+	udc_puts(s);
+#endif
 	struct serial_device *dev = get_current();
 	while (*s)
 		dev->putc(*s++);

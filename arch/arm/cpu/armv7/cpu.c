@@ -55,8 +55,9 @@ int cleanup_before_linux_select(int flags)
 		* any static data) So just invalidate the entire d-cache again
 		* to avoid coherency problems for kernel
 		*/
+#ifndef CONFIG_SYS_LEVEL2_CACHE_SHARE
 		invalidate_dcache_all();
-
+#endif
 		icache_disable();
 		invalidate_icache_all();
 	} else {

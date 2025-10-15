@@ -1080,4 +1080,7 @@ struct usb_generic_descriptor **usb_emul_find_descriptor(
  */
 void usb_show_tree(void);
 
+int udc_connect(void);
+void udc_puts(const char *s);
+
 #endif /*_USB_H_ */

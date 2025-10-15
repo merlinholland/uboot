@@ -1,0 +1,15 @@
+if TARGET_SS522V100
+
+config SYS_BOARD
+	default "ss522v100"
+
+config SYS_VENDOR
+	default "vendor"
+
+config SYS_SOC
+	default "ss522v100"
+
+config SYS_CONFIG_NAME
+	default "ss522v100"
+
+endif

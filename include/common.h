@@ -15,6 +15,7 @@
 
 #ifndef __ASSEMBLY__		/* put C only stuff in this section */
 
+typedef unsigned char		uchar;
 typedef volatile unsigned long	vu_long;
 typedef volatile unsigned short vu_short;
 typedef volatile unsigned char	vu_char;
@@ -72,6 +73,7 @@ extern u8 __dtb_dt_begin[];	/* embedded device tree blob */
 extern u8 __dtb_dt_spl_begin[];	/* embedded device tree blob for SPL/TPL */
 int mdm_init(void);
 
+extern int auto_update_flag;
 /**
  * arch_fixup_fdt() - Write arch-specific information to fdt
  *
@@ -123,6 +125,9 @@ void	fdc_hw_init   (void);
 int testdram(void);
 #endif /* CONFIG_SYS_DRAM_TEST */
 
+void    dcache_enable (void);
+void    dcache_disable(void);
+
 #if defined(CONFIG_ARM)
 void	relocate_code(ulong);
 #else
@@ -143,6 +148,10 @@ int	get_clocks (void);
 ulong	get_bus_freq  (ulong);
 int get_serial_clock(void);
 
+void print_to_tool(const char *fmt, ...);
+void add_shutdown(void (*shutdown)(void));
+void do_shutdown(void);
+
 /* lib/uuid.c */
 #include <uuid.h>
 
@@ -153,6 +162,16 @@ int get_serial_clock(void);
 #include <net.h>
 
 #include <bootstage.h>
+
+#define BOOT_MEDIA_UNKNOWN        (0)
+#define BOOT_MEDIA_UFS            (1)
+#define BOOT_MEDIA_NAND           (2)
+#define BOOT_MEDIA_SPIFLASH       (3)
+#define BOOT_MEDIA_EMMC           (4)
+
+/* get uboot start media. */
+int get_boot_media(void);
+unsigned int get_ddr_size(void);
 
 #else	/* __ASSEMBLY__ */
 

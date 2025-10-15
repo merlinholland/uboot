@@ -101,6 +101,22 @@ config HBMC_AM654
 	 This is the driver for HyperBus controller on TI's AM65x and
 	 other SoCs
 
+config FMC
+	bool "Enable FMC - Flash Memory Controller"
+	depends on TARGET_SS101V200 || TARGET_SS101V500 || TARGET_SS101V300 || TARGET_SS101V600 || TARGET_SS919V100 || TARGET_SS015V100 || TARGET_SS318V100 || TARGET_SS918V100 || TARGET_SS812V100 || TARGET_SS813V100 || TARGET_SS815V100 || TARGET_SS312V100 || TARGET_SS313V100 || TARGET_SS528V100 || TARGET_SS625V100 || TARGET_SS011V100 || TARGET_SS012V100 || TARGET_SS524V100 || TARGET_SS522V101 || TARGET_SS522V100 || TARGET_SS013V100 || TARGET_SS615V100 || TARGET_SS928V100 || TARGET_SS927V100
+	help
+	  Flash Memory Controller support SPI Nor SPI Nand and parallel
+	  Nand Flash. often used on embedded chip. This option will provide the
+	  generic support for FMC drivers to register.
+
+config BSP_NAND_SPL
+        bool "u-boot image backup support"
+        depends on FMC
+	default n
+        help
+          u-boot image backup support
+          if unsure, say N
+
 source "drivers/mtd/nand/Kconfig"
 
 source "drivers/mtd/spi/Kconfig"

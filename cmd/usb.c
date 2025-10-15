@@ -632,10 +632,16 @@ static int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc < 2)
 		return CMD_RET_USAGE;
 
+	if (strncmp(argv[1], "device", 6) == 0) {
+		printf("Install USB Device...\n");
+		udc_connect();
+		return 0;
+	}
+	
 	if (strncmp(argv[1], "start", 5) == 0) {
-		if (usb_started)
-			return 0; /* Already started */
+
 		printf("starting USB...\n");
+		usb_stop();
 		do_usb_start();
 		return 0;
 	}

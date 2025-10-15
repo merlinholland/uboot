@@ -1017,6 +1017,9 @@ static inline void nand_set_controller_data(struct nand_chip *chip, void *priv)
 #define NAND_MFR_SANDISK	0x45
 #define NAND_MFR_INTEL		0x89
 #define NAND_MFR_ATO		0x9b
+#define NAND_MFR_HEYANGTEK	0xc9
+#define NAND_MFR_DOSILICON	0xe5
+#define NAND_MFR_FIDELIX	0xf8
 
 /* The maximum expected count of bytes in the NAND ID sequence */
 #define NAND_MAX_ID_LEN 8
@@ -1329,4 +1332,18 @@ int nand_read_data_op(struct nand_chip *chip, void *buf, unsigned int len,
 int nand_write_data_op(struct nand_chip *chip, const void *buf,
 		       unsigned int len, bool force_8bit);
 
+static inline char *get_ecctype_str(int ecctype)
+{
+#if defined(CONFIG_FMC_SPI_NAND)
+	static char *ecctype_string[] = {
+		"None", "1bit/512Byte", "4bits/512Byte", "8bits/512Byte",
+		"24bits/1K", "unknown", "40bits/1K", "unknown"};
+	return ecctype_string[(ecctype + 1) / 2];
+#else
+	static char *ecctype_string[] = {
+		"None", "1bit/512Byte", "4bits/512Byte", "8bits/512Byte",
+		"24bits/1K", "40bits/1K", "unknown", "unknown"};
+	return ecctype_string[((unsigned int)ecctype & 0x0F)];
+#endif
+}
 #endif /* __LINUX_MTD_RAWNAND_H */

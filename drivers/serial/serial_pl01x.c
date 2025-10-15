@@ -19,6 +19,7 @@
 #include <dm/platform_data/serial_pl01x.h>
 #include <linux/compiler.h>
 #include "serial_pl01x_internal.h"
+#include <usb.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -31,8 +32,18 @@ static struct pl01x_regs *base_regs __attribute__ ((section(".data")));
 
 #endif
 
+#ifdef CONFIG_BSP_DISABLE_CONSOLE
+static bool g_uart_fputc_en = false;
+#else
+static bool g_uart_fputc_en = true;
+#endif
+
 static int pl01x_putc(struct pl01x_regs *regs, char c)
 {
+	if (g_uart_fputc_en == false) {
+		return 0;
+	}
+
 	/* Wait until there is space in the FIFO */
 	if (readl(&regs->fr) & UART_PL01x_FR_TXFF)
 		return -EAGAIN;
@@ -270,6 +281,17 @@ __weak struct serial_device *default_serial_console(void)
 
 #endif /* nCONFIG_DM_SERIAL */
 
+void serial_puts_to_tool(const char *s)
+{
+#ifdef CONFIG_USB_GADGET
+	udc_puts(s);
+#endif
+	while (*s) {
+		while (pl01x_putc(base_regs, *s) == -EAGAIN);
+		s++;
+	}
+}
+
 #ifdef CONFIG_DM_SERIAL
 
 int pl01x_serial_setbrg(struct udevice *dev, int baudrate)
@@ -396,3 +418,8 @@ static inline void _debug_uart_putc(int ch)
 DEBUG_UART_FUNCS
 
 #endif
+
+void serial_enable_output(bool is_enable)
+{
+	g_uart_fputc_en = is_enable;
+}

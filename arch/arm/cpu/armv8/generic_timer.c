@@ -14,7 +14,7 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * Generic timer implementation of get_tbclk()
  */
-unsigned long get_tbclk(void)
+__weak unsigned long get_tbclk(void)
 {
 	unsigned long cntfrq;
 	asm volatile("mrs %0, cntfrq_el0" : "=r" (cntfrq));
@@ -32,7 +32,7 @@ unsigned long get_tbclk(void)
  * was the same in both reads.
  * Assumes that the CPU runs in much higher frequency than the timer.
  */
-unsigned long timer_read_counter(void)
+__weak unsigned long timer_read_counter(void)
 {
 	unsigned long cntpct;
 	unsigned long temp;
@@ -86,13 +86,19 @@ unsigned long timer_read_counter(void)
 }
 #endif
 
-uint64_t get_ticks(void)
+__weak uint64_t get_ticks(void)
 {
 	unsigned long ticks = timer_read_counter();
 
 	gd->arch.tbl = ticks;
 
-	return ticks;
+    /* increment tbu if tbl has rolled over */
+    if (ticks < gd->timebase_l) {
+        gd->timebase_h++;
+    }
+
+    gd->timebase_l = ticks;
+    return ((uint64_t)gd->timebase_h << 32) | gd->timebase_l;
 }
 
 unsigned long usec2ticks(unsigned long usec)

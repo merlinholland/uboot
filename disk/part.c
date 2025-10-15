@@ -24,28 +24,16 @@
 /* Check all partition types */
 #define PART_TYPE_ALL		-1
 
-static struct part_driver *part_driver_lookup_type(struct blk_desc *dev_desc)
+static struct part_driver *part_driver_lookup_type(int part_type)
 {
 	struct part_driver *drv =
 		ll_entry_start(struct part_driver, part_driver);
 	const int n_ents = ll_entry_count(struct part_driver, part_driver);
 	struct part_driver *entry;
 
-	if (dev_desc->part_type == PART_TYPE_UNKNOWN) {
-		for (entry = drv; entry != drv + n_ents; entry++) {
-			int ret;
-
-			ret = entry->test(dev_desc);
-			if (!ret) {
-				dev_desc->part_type = entry->part_type;
-				return entry;
-			}
-		}
-	} else {
-		for (entry = drv; entry != drv + n_ents; entry++) {
-			if (dev_desc->part_type == entry->part_type)
-				return entry;
-		}
+	for (entry = drv; entry != drv + n_ents; entry++) {
+		if (part_type == entry->part_type)
+			return entry;
 	}
 
 	/* Not found */
@@ -301,7 +289,7 @@ void part_print(struct blk_desc *dev_desc)
 {
 	struct part_driver *drv;
 
-	drv = part_driver_lookup_type(dev_desc);
+	drv = part_driver_lookup_type(dev_desc->part_type);
 	if (!drv) {
 		printf("## Unknown partition table type %x\n",
 		       dev_desc->part_type);
@@ -330,7 +318,7 @@ int part_get_info(struct blk_desc *dev_desc, int part,
 	info->type_guid[0] = 0;
 #endif
 
-	drv = part_driver_lookup_type(dev_desc);
+	drv = part_driver_lookup_type(dev_desc->part_type);
 	if (!drv) {
 		debug("## Unknown partition table type %x\n",
 		      dev_desc->part_type);
@@ -651,7 +639,7 @@ int part_get_info_by_name_type(struct blk_desc *dev_desc, const char *name,
 	int ret;
 	int i;
 
-	part_drv = part_driver_lookup_type(dev_desc);
+	part_drv = part_driver_lookup_type(dev_desc->part_type);
 	if (!part_drv)
 		return -1;
 	for (i = 1; i < part_drv->max_entries; i++) {

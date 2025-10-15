@@ -47,6 +47,7 @@ unsigned long __efi_runtime invoke_psci_fn
 
 static int psci_bind(struct udevice *dev)
 {
+#if !defined(CONFIG_TARGET_SS928V100) && !defined(CONFIG_TARGET_SS927V100)
 	/* No SYSTEM_RESET support for PSCI 0.1 */
 	if (device_is_compatible(dev, "arm,psci-0.2") ||
 	    device_is_compatible(dev, "arm,psci-1.0")) {
@@ -58,7 +59,7 @@ static int psci_bind(struct udevice *dev)
 		if (ret)
 			pr_debug("PSCI System Reset was not bound.\n");
 	}
-
+#endif
 	return 0;
 }
 

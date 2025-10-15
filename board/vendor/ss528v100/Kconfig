@@ -1,0 +1,15 @@
+if TARGET_SS528V100
+
+config SYS_BOARD
+	default "ss528v100"
+
+config SYS_VENDOR
+	default "vendor"
+
+config SYS_SOC
+	default "ss528v100"
+
+config SYS_CONFIG_NAME
+	default "ss528v100"
+
+endif

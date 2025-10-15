@@ -1,0 +1,3 @@
+config OSD_ENABLE
+	bool "enable osd"
+	default y if TARGET_SS813V100

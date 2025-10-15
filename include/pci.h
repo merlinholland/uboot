@@ -520,6 +520,17 @@ static inline void pci_set_region(struct pci_region *reg,
 
 typedef int pci_dev_t;
 
+#ifdef CONFIG_PCIE_BSP
+#define PCI_BUS(d)      (((d) >> 20) & 0xff)
+#define PCI_DEV(d)      (((d) >> 15) & 0x1f)
+#define PCI_FUNC(d)     (((d) >> 12) & 0x7)
+#define PCI_DEVFN(d, f)     ((d) << 15 | (f) << 12)
+#define PCI_MASK_BUS(bdf)   ((bdf) & 0xffff)
+#define PCI_ADD_BUS(bus, devfn) (((bus) << 20) | (devfn))
+#define PCI_BDF(b, d, f)    ((b) << 20 | PCI_DEVFN(d, f))
+#define PCI_VENDEV(v, d)    (((v) << 20) | (d))
+#define PCI_ANY_ID      (~0)
+#else
 #define PCI_BUS(d)		(((d) >> 16) & 0xff)
 
 /*
@@ -540,6 +551,7 @@ typedef int pci_dev_t;
 #define PCI_BDF(b, d, f)	((b) << 16 | PCI_DEVFN(d, f))
 #define PCI_VENDEV(v, d)	(((v) << 16) | (d))
 #define PCI_ANY_ID		(~0)
+#endif
 
 struct pci_device_id {
 	unsigned int vendor, device;	/* Vendor and device ID or PCI_ANY_ID */

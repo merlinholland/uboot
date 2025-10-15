@@ -93,6 +93,10 @@ __weak void blue_led_off(void) {}
  * literal pool we get on ARM. Or perhaps just encourage each module to use
  * a structure...
  */
+#if defined(CONFIG_TARGET_SS928V100) || defined(CONFIG_TARGET_SS927V100)
+extern int config_qos_registers(void);
+extern int config_pi_defense_registers(void);
+#endif
 
 #if defined(CONFIG_WATCHDOG) || defined(CONFIG_HW_WATCHDOG)
 static int init_func_watchdog_init(void)
@@ -228,9 +232,9 @@ static int show_dram_config(void)
 	size = gd->ram_size;
 #endif
 
-	print_size(size, "");
+/*	print_size(size, "");
 	board_add_ram_info(0);
-	putc('\n');
+	putc('\n'); */
 
 	return 0;
 }
@@ -746,11 +750,12 @@ static int setup_reloc(void)
 #endif
 	memcpy(gd->new_gd, (char *)gd, sizeof(gd_t));
 
-	debug("Relocation Offset is: %08lx\n", gd->reloc_off);
-	debug("Relocating to %08lx, new gd at %08lx, sp at %08lx\n",
+#ifndef CONFIG_BSP_DISABLE_CONSOLE
+	printf("Relocation Offset is: %08lx\n", gd->reloc_off);
+	printf("Relocating to %08lx, new gd at %08lx, sp at %08lx\n",
 	      gd->relocaddr, (ulong)map_to_sysmem(gd->new_gd),
 	      gd->start_addr_sp);
-
+#endif
 	return 0;
 }
 
@@ -938,7 +943,6 @@ static const init_fnc_t init_sequence_f[] = {
 	testdram,
 #endif /* CONFIG_SYS_DRAM_TEST */
 	INIT_FUNC_WATCHDOG_RESET
-
 #ifdef CONFIG_POST
 	init_post,
 #endif
@@ -1006,6 +1010,11 @@ static const init_fnc_t init_sequence_f[] = {
 		!CONFIG_IS_ENABLED(X86_64)
 	jump_to_copy,
 #endif
+
+#if defined(CONFIG_TARGET_SS928V100) || defined(CONFIG_TARGET_SS927V100)
+	config_qos_registers,
+	config_pi_defense_registers,
+#endif
 	NULL,
 };
 
@@ -1016,7 +1025,6 @@ void board_init_f(ulong boot_flags)
 
 	if (initcall_run_list(init_sequence_f))
 		hang();
-
 #if !defined(CONFIG_ARM) && !defined(CONFIG_SANDBOX) && \
 		!defined(CONFIG_EFI_APP) && !CONFIG_IS_ENABLED(X86_64) && \
 		!defined(CONFIG_ARC)

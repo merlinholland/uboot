@@ -19,6 +19,7 @@
 #include <exports.h>
 #include <env_internal.h>
 #include <watchdog.h>
+#include <serial.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -985,6 +986,23 @@ int console_init_r(void)
 #endif
 	print_pre_console_buffer(flushpoint);
 	return 0;
+}
+
+void print_to_tool(const char *fmt, ...)
+{
+	va_list args;
+	char printbuffer[CONFIG_SYS_PBSIZE];
+
+	va_start(args, fmt);
+
+	/* For this to work, printbuffer must be larger than
+	 * anything we ever want to print.
+	 */
+	vsprintf(printbuffer, fmt, args);
+	va_end(args);
+
+	/* Print the string */
+	serial_puts_to_tool(printbuffer);
 }
 
 #endif /* CONFIG_IS_ENABLED(SYS_CONSOLE_IS_IN_ENV) */

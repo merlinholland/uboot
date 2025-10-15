@@ -184,6 +184,8 @@ endif # !CONFIG_SPL_BUILD
 
 # core command
 obj-y += nvedit.o
+obj-y += vendor/getinfo.o
+obj-$(CONFIG_CMD_USB) += usbtftp.o
 
 obj-$(CONFIG_TI_COMMON_CMD_OPTIONS) += ti/
 
@@ -224,3 +226,10 @@ $(obj)/license_data_size.h: $(srctree)/Licenses/gpl-2.0.txt FORCE
 	$(call filechk,data_size)
 
 CFLAGS_ethsw.o := -Wno-enum-conversion
+
+# osd command
+sinclude $(srctree)/cmd/Makefile-otproduct
+
+obj-$(CONFIG_CMD_CREAD) += cmd_cycle.o
+obj-$(CONFIG_CMD_UGZIP) += cmd_ugzip.o
+obj-$(CONFIG_CMD_COPYENV) += nvcopy.o

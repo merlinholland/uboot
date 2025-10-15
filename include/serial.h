@@ -342,5 +342,7 @@ void serial_putc_raw(const char ch);
 void serial_puts(const char *str);
 int serial_getc(void);
 int serial_tstc(void);
+void serial_puts_to_tool(const char *);
+void serial_enable_output(bool is_enable);
 
 #endif

@@ -19,12 +19,14 @@ ELF := $(strip $(extra-y))
 extra-y += $(addsuffix .srec,$(extra-y)) $(addsuffix .bin,$(extra-y))
 clean-files  := *.srec *.bin
 
+ifndef CONFIG_VENDOR_MC
 COBJS	:= $(ELF:=.o)
 
 LIB	= $(obj)/libstubs.o
+LIBOBJS-y += stubs.o
+endif
 
 LIBOBJS-$(CONFIG_PPC) += ppc_longjmp.o ppc_setjmp.o
-LIBOBJS-y += stubs.o
 
 targets += $(patsubst $(obj)/%,%,$(LIB)) $(COBJS) $(LIBOBJS-y)
 

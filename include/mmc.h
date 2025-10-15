@@ -239,6 +239,9 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 /*
  * EXT_CSD field definitions
  */
+#define EXT_CSD_WR_REL_VALUE		(0x1f)
+#define EXT_CSD_RST_N_EN_MASK		0x3
+#define EXT_CSD_RST_N_ENABLED		(1 << 0)	/* RST_n is enabled on card */
 
 #define EXT_CSD_CMD_SET_NORMAL		(1 << 0)
 #define EXT_CSD_CMD_SET_SECURE		(1 << 1)
@@ -507,6 +510,9 @@ struct mmc_ops {
 	int (*getcd)(struct mmc *mmc);
 	int (*getwp)(struct mmc *mmc);
 	int (*host_power_cycle)(struct mmc *mmc);
+	int (*execute_tuning)(struct mmc *mmc, u32 opcode);
+	void (*hs400_enable_es)(struct mmc *mmc, bool enable);
+	int (*card_busy)(struct mmc *mmc);
 };
 #endif
 
@@ -601,6 +607,7 @@ struct mmc {
 	bool clk_disable; /* true if the clock can be turned off */
 	uint bus_width;
 	uint clock;
+#define MMC_HIGH_52_MAX_DTR 52000000
 	enum mmc_voltage signal_voltage;
 	uint card_caps;
 	uint host_caps;
@@ -653,6 +660,9 @@ struct mmc {
 	struct udevice *vqmmc_supply;	/* IO voltage regulator (Vccq)*/
 #endif
 #endif
+	u8 strobe_enhanced;
+	u8 dev_num;
+	u32 ocr_from_bootrom;
 	u8 *ext_csd;
 	u32 cardtype;		/* cardtype read from the MMC */
 	enum mmc_voltage current_voltage;
@@ -773,6 +783,8 @@ int mmc_getwp(struct mmc *mmc);
 int board_mmc_getwp(struct mmc *mmc);
 #endif
 
+int mmc_send_ext_csd(struct mmc *mmc, u8 *ext_csd);
+int mmc_set_boot_config(struct mmc *mmc);
 int mmc_set_dsr(struct mmc *mmc, u16 val);
 /* Function to change the size of boot partition and rpmb partitions */
 int mmc_boot_partition_size_change(struct mmc *mmc, unsigned long bootsize,

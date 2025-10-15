@@ -27,6 +27,7 @@ endif
 
 obj-$(CONFIG_$(SPL_TPL_)ENV_IS_NOWHERE) += nowhere.o
 obj-$(CONFIG_$(SPL_TPL_)ENV_IS_IN_MMC) += mmc.o
+obj-$(CONFIG_$(SPL_TPL_)ENV_IS_IN_UFS) += ufs.o
 obj-$(CONFIG_$(SPL_TPL_)ENV_IS_IN_FAT) += fat.o
 obj-$(CONFIG_$(SPL_TPL_)ENV_IS_IN_EXT4) += ext4.o
 obj-$(CONFIG_$(SPL_TPL_)ENV_IS_IN_NAND) += nand.o

@@ -553,6 +553,12 @@ config CMD_NVEDIT_INFO
 	  [-p] : evaluate whether environment can be persisted
 	  The result of multiple evaluations will be combined with AND.
 
+config CMD_COPYENV
+	bool "copy env"
+	default n
+	help
+	  copy specified env to dst memory. such as: envcopy bootargs 0x80000020
+	  
 endmenu
 
 menu "Memory commands"
@@ -723,6 +729,12 @@ config CMD_STRINGS
 	  within the range are displayed. The minimum number of characters
 	  for a sequence to be considered a string can be provided.
 
+config CMD_DDR_TRAINING
+	bool "ddr training"
+	default y
+	help
+	  ddr training function
+
 endmenu
 
 menu "Compression commands"
@@ -745,6 +757,20 @@ config CMD_ZIP
 	bool "zip"
 	help
 	  Compress a memory region with zlib deflate method.
+
+config CMD_CREAD
+	bool "Enable cycle read function"
+	default y if TARGET_SS318V100 || TARGET_SS918V100
+	default y if TARGET_SS313V100 || TARGET_SS813V100 || TARGET_SS312V100 || TARGET_SS101V300
+	help
+	  Enable the function for cycle read. 
+	 
+config CMD_UGZIP
+	bool "ugzip"
+	default y if TARGET_SS313V100 || TARGET_SS813V100 || TARGET_SS312V100 || TARGET_SS101V300
+	select HWDEC
+	help
+	  UnCompress a gzip file with hardware umcompress ip of chip.
 
 endmenu
 
@@ -1048,7 +1074,7 @@ config CMD_MTD
 config CMD_NAND
 	bool "nand"
 	default y if NAND_SUNXI
-	depends on MTD_RAW_NAND
+	depends on MTD_RAW_NAND || FMC_SPI_NAND  || FMC_NAND
 	help
 	  NAND support.
 
@@ -1172,7 +1198,7 @@ config CMD_SDRAM
 
 config CMD_SF
 	bool "sf"
-	depends on DM_SPI_FLASH || SPI_FLASH
+	depends on DM_SPI_FLASH || SPI_FLASH || FMC_SPI_NOR
 	default y if DM_SPI_FLASH
 	help
 	  SPI Flash support
@@ -1227,6 +1253,7 @@ config CMD_UNIVERSE
 config CMD_USB
 	bool "usb"
 	select HAVE_BLOCK_DEVICE
+	depends on USB_GADGET
 	help
 	  USB support.
 

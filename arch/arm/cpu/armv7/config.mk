@@ -8,4 +8,5 @@
 # the default so we must pass in -mno-unaligned-access so that it is aware
 # of our decision.
 PF_NO_UNALIGNED := $(call cc-option, -mno-unaligned-access,)
+PF_NO_UNALIGNED += $(call cc-option, -fno-store-merging,)
 PLATFORM_CPPFLAGS += $(PF_NO_UNALIGNED)

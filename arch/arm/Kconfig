@@ -1229,6 +1229,188 @@ config TARGET_HIKEY
 	  Support for HiKey 96boards platform. It features a HI6220
 	  SoC, with 8xA53 CPU, mali450 gpu, and 1GB RAM.
 
+config TARGET_SS919V100
+	bool "Support SS919V100"
+	select ARM64
+	select DM
+	  help
+	  Support for SS919V100 platform.
+
+config TARGET_SS015V100
+	bool "Support SS015V100"
+	select ARM64
+	select DM
+	  help
+	  Support for SS015V100 platform.
+
+config TARGET_SS528V100
+	bool "Support SS528V100"
+	select ARM64
+	  help
+	  Support for SS528V100 platform.
+
+config TARGET_SS625V100
+	bool "Support SS625V100"
+	select ARM64
+	  help
+	  Support for SS625V100 platform.
+
+config TARGET_SS318V100
+	bool "Support SS318V100"
+	select CPU_V7A
+	select DM
+	  help
+	  Support for SS318V100 platform.
+
+config TARGET_SS918V100
+	bool "Support SS918V100"
+	select CPU_V7A
+	select DM
+	  help
+	  Support for SS918V100 platform.
+
+config TARGET_SS013V100
+	bool "Support SS013V100"
+	select CPU_V7A
+	select DM
+	  help
+	  Support for SS013V100 platform.
+
+config TARGET_SS312V100
+	bool "Support SS312V100"
+	select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+	  help
+	  Support for SS312V100 platform.
+
+config TARGET_SS313V100
+	bool "Support SS313V100"
+	select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+	  help
+	  Support for SS313V100 platform.
+
+config TARGET_SS812V100
+	bool "Support SS812V100"
+	select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+	  help
+	  Support for SS812V100 platform.
+
+config TARGET_SS813V100
+	bool "Support SS813V100"
+	select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+	  help
+	  Support for SS813V100 platform.
+
+config TARGET_SS815V100
+	bool "Support SS815V100"
+	select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+	  help
+	  Support for SS815V100 platform.
+	  
+config TARGET_SS011V100
+	bool "Support SS011V100"
+	select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+	  help
+	  Support for SS011V100 platform.
+
+config TARGET_SS012V100
+	bool "Support SS012V100"
+	select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+	  help
+	  Support for SS012V100 platform.
+
+config TARGET_SS101V200
+    bool "Support SS101V200"
+    select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS101V200 platform.
+
+config TARGET_SS101V300
+    bool "Support SS101V300"
+    select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS101V300 platform.
+
+config TARGET_SS101V600
+    bool "Support SS101V600"
+    select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS101V600 platform.
+
+config TARGET_SS101V500
+    bool "Support SS101V500"
+    select CPU_V7A
+	select DM
+	select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS101V500 platform.
+
+config TARGET_SS524V100
+    bool "Support SS524V100"
+    select CPU_V7A
+	select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS524V100 platform.
+
+config TARGET_SS615V100
+    bool "Support SS615V100"
+    select CPU_V7A
+	select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS615V100 platform.
+
+config TARGET_SS522V101
+    bool "Support SS522V101"
+    select CPU_V7A
+	select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS522V101 platform.
+
+config TARGET_SS522V100
+    bool "Support SS522V100"
+    select CPU_V7A
+    select CPU_V7A_HAS_NONSEC
+    help
+    Support for SS522V100 platform.
+
+config TARGET_SS928V100
+	bool "Support SS928V100"
+	select ARM64
+	select DM
+    help
+    Support for SS928V100 platform.
+	  
+config TARGET_SS927V100
+	bool "Support SS927V100"
+	select ARM64
+	select DM
+    help
+    Support for SS927V100 platform.
+
+config ARCH_VENDOR
+	bool "VENDOR SoCs"
+	select DM
+
+
 config TARGET_HIKEY960
 	bool "Support HiKey960 96boards Consumer Edition Platform"
 	select ARM64
@@ -1690,6 +1872,8 @@ source "arch/arm/mach-exynos/Kconfig"
 
 source "arch/arm/mach-highbank/Kconfig"
 
+source "arch/arm/mach-vendor/Kconfig"
+
 source "arch/arm/mach-integrator/Kconfig"
 
 source "arch/arm/mach-k3/Kconfig"
@@ -1816,6 +2000,16 @@ source "board/freescale/s32v234evb/Kconfig"
 source "board/grinn/chiliboard/Kconfig"
 source "board/gumstix/pepper/Kconfig"
 source "board/hisilicon/hikey/Kconfig"
+source "board/vendor/ss528v100/Kconfig"
+source "board/vendor/ss625v100/Kconfig"
+source "board/vendor/ss524v100/Kconfig"
+source "board/vendor/ss615v100/Kconfig"
+source "board/vendor/ss522v101/Kconfig"
+source "board/vendor/ss522v100/Kconfig"
+source "board/vendor/ss528v100/Kconfig"
+source "board/vendor/ss625v100/Kconfig"
+source "board/vendor/ss928v100/Kconfig"
+source "board/vendor/ss927v100/Kconfig"
 source "board/hisilicon/hikey960/Kconfig"
 source "board/hisilicon/poplar/Kconfig"
 source "board/isee/igep003x/Kconfig"
@@ -1846,6 +2040,7 @@ endmenu
 config SPL_LDSCRIPT
 	default "arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds" if (ARCH_MX23 || ARCH_MX28) && !SPL_FRAMEWORK
 	default "arch/arm/cpu/arm1136/u-boot-spl.lds" if CPU_ARM1136
-	default "arch/arm/cpu/armv8/u-boot-spl.lds" if ARM64
+	default "arch/arm/cpu/armv8/u-boot-spl.lds" if ARM64 && !TARGET_SS919V100 && !TARGET_SS528V100 &&\
+			   !TARGET_SS625V100 && !TARGET_SS015V100 && !TARGET_SS928V100 && !TARGET_SS927V100
 
 

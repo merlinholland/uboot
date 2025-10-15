@@ -706,7 +706,13 @@ config MMC_MTK
 	  If you have a machine with a integrated SD/MMC card reader, say Y or M here.
 	  This is needed if support for any SD/SDIO/MMC devices is required.
 	  If unsure, say N.
-
+  
+config MCI
+	bool "MMC controller for VENDOR support"
+	depends on MMC
+	help
+	  Support for MMC host controller on VENDOR ARM SoCs platform
+  
 endif
 
 config FSL_ESDHC

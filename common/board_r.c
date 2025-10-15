@@ -18,6 +18,7 @@
 #if defined(CONFIG_CMD_BEDBUG)
 #include <bedbug/type.h>
 #endif
+#include <binman.h>
 #include <command.h>
 #include <console.h>
 #include <dm.h>
@@ -36,6 +37,7 @@
 #include <miiphy.h>
 #endif
 #include <mmc.h>
+#include <ufs.h>
 #include <nand.h>
 #include <of_live.h>
 #include <onenand_uboot.h>
@@ -57,6 +59,10 @@
 #include <wdt.h>
 #if defined(CONFIG_GPIO_HOG)
 #include <asm/gpio.h>
+#endif
+
+#ifdef CONFIG_CMD_SF
+#include <spi_flash.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -104,7 +110,6 @@ static int initr_reloc(void)
 {
 	/* tell others: relocation done */
 	gd->flags |= GD_FLG_RELOC | GD_FLG_FULL_MALLOC_INIT;
-
 	return 0;
 }
 
@@ -347,6 +352,14 @@ static int initr_manual_reloc_cmdtable(void)
 }
 #endif
 
+static int initr_binman(void)
+{
+	if (!CONFIG_IS_ENABLED(BINMAN_FDT))
+		return 0;
+
+	return binman_init();
+}
+
 #if defined(CONFIG_MTD_NOR_FLASH)
 static int initr_flash(void)
 {
@@ -399,6 +412,31 @@ static int initr_flash(void)
 }
 #endif
 
+#ifdef CONFIG_CMD_SF
+
+#ifndef CONFIG_ENV_SPI_BUS
+# define CONFIG_ENV_SPI_BUS 0
+#endif
+#ifndef CONFIG_ENV_SPI_CS
+# define CONFIG_ENV_SPI_CS  0
+#endif
+#ifndef CONFIG_ENV_SPI_MAX_HZ
+# define CONFIG_ENV_SPI_MAX_HZ  1000000
+#endif
+#ifndef CONFIG_ENV_SPI_MODE
+# define CONFIG_ENV_SPI_MODE    SPI_MODE_3
+#endif
+
+/* go init the SPI Nor */
+static int initr_snor(void)
+{
+	puts("SPI Nor:  ");
+	spi_flash_probe(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
+			CONFIG_ENV_SPI_MAX_HZ, CONFIG_ENV_SPI_MODE);
+	return 0;
+}
+#endif /* CONFIG_CMD_SF */
+
 #ifdef CONFIG_CMD_NAND
 /* go init the NAND */
 static int initr_nand(void)
@@ -406,6 +444,15 @@ static int initr_nand(void)
 	puts("NAND:  ");
 	nand_init();
 	printf("%lu MiB\n", nand_size() / 1024);
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_GENERIC_UFS
+static int initr_ufs(void)
+{
+	puts("UFS:   ");
+	ufs_storage_init();
 	return 0;
 }
 #endif
@@ -633,6 +680,14 @@ static int initr_bedbug(void)
 }
 #endif
 
+static int initr_download(void)
+{
+#ifndef CONFIG_BSP_DISABLE_DOWNLOAD
+	extern void download_boot(const int (*handle)(void));
+	download_boot(NULL);
+#endif
+	return 0;
+}
 static int run_main_loop(void)
 {
 #ifdef CONFIG_SANDBOX
@@ -697,6 +752,7 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_EFI_LOADER
 	efi_memory_init,
 #endif
+	initr_binman,
 	stdio_init_tables,
 	initr_serial,
 	initr_announce,
@@ -740,6 +796,9 @@ static init_fnc_t init_sequence_r[] = {
 	/* initialize higher level parts of CPU like time base and timers */
 	cpu_init_r,
 #endif
+#ifdef CONFIG_CMD_SF
+	initr_snor,
+#endif
 #ifdef CONFIG_CMD_NAND
 	initr_nand,
 #endif
@@ -748,6 +807,9 @@ static init_fnc_t init_sequence_r[] = {
 #endif
 #ifdef CONFIG_MMC
 	initr_mmc,
+#endif
+#ifdef CONFIG_GENERIC_UFS
+	initr_ufs,
 #endif
 	initr_env,
 #ifdef CONFIG_SYS_BOOTPARAMS_LEN
@@ -838,6 +900,8 @@ static init_fnc_t init_sequence_r[] = {
 #if defined(CONFIG_PRAM)
 	initr_mem,
 #endif
+	initr_download,
+
 	run_main_loop,
 };
 

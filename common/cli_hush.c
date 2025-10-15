@@ -1042,6 +1042,8 @@ static void get_user_input(struct in_str *i)
 	if (n == -1 ) {
 		flag_repeat = 0;
 		i->__promptme = 0;
+	} else if (n == -3) {
+		flag_repeat = 0;
 	}
 	n = strlen(console_buffer);
 	console_buffer[n] = '\n';

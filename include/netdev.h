@@ -73,6 +73,14 @@ int uec_standard_init(bd_t *bis);
 int uli526x_initialize(bd_t *bis);
 int armada100_fec_register(unsigned long base_addr);
 
+#ifdef CONFIG_SFV300_ETH
+int bspeth_initialize(bd_t *bis);
+#endif
+
+#ifdef CONFIG_GMACV300_ETH
+int gmac_initialize(bd_t *bis);
+#endif
+
 /* Boards with PCI network controllers can call this from their board_eth_init()
  * function to initialize whatever's on board.
  * Return value is total # of devices found */

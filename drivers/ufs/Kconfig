@@ -1,6 +1,6 @@
 menu "UFS Host Controller Support"
 
-config UFS
+config SCSI_UFS
 	bool "Support UFS controllers"
 	depends on DM_SCSI
 	help
@@ -20,4 +20,11 @@ config TI_J721E_UFS
 	  This selects the glue layer driver for Cadence controller
 	  present on TI's J721E devices.
 
+config UFS
+	bool "UFS card support"
+	select HAVE_BLOCK_DEVICE
+	help
+	  This selects Universal Flash Storage support.
+	  If you want UFS support, you should say Y here and
+	  also to your specific host controller driver.
 endmenu

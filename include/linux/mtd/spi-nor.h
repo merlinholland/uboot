@@ -328,6 +328,12 @@ struct spi_nor {
 			 size_t len, const u_char *write_buf);
 	int (*erase)(struct spi_nor *nor, loff_t offs);
 
+#ifdef CONFIG_SPI_BLOCK_PROTECT
+	unsigned int bp_level_max;
+
+	void (*lock)(unsigned char cmp, unsigned char level,
+				unsigned char op);
+#endif
 	int (*flash_lock)(struct spi_nor *nor, loff_t ofs, uint64_t len);
 	int (*flash_unlock)(struct spi_nor *nor, loff_t ofs, uint64_t len);
 	int (*flash_is_locked)(struct spi_nor *nor, loff_t ofs, uint64_t len);

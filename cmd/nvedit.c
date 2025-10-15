@@ -52,6 +52,7 @@ DECLARE_GLOBAL_DATA_PTR;
 	defined(CONFIG_ENV_IS_IN_SATA)		|| \
 	defined(CONFIG_ENV_IS_IN_SPI_FLASH)	|| \
 	defined(CONFIG_ENV_IS_IN_REMOTE)	|| \
+	defined(CONFIG_ENV_IS_IN_UFS)		|| \
 	defined(CONFIG_ENV_IS_IN_UBI)
 
 #define ENV_IS_IN_DEVICE
@@ -61,7 +62,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #if	!defined(ENV_IS_IN_DEVICE)		&& \
 	!defined(CONFIG_ENV_IS_NOWHERE)
 # error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|MMC|FAT|EXT4|\
-NAND|NVRAM|ONENAND|SATA|SPI_FLASH|REMOTE|UBI} or CONFIG_ENV_IS_NOWHERE
+NAND|NVRAM|ONENAND|SATA|SPI_FLASH|REMOTE|UBI|UFS} or CONFIG_ENV_IS_NOWHERE
 #endif
 
 /*
@@ -1443,7 +1444,7 @@ U_BOOT_CMD_COMPLETE(
 #endif
 
 U_BOOT_CMD_COMPLETE(
-	printenv, CONFIG_SYS_MAXARGS, 1,	do_env_print,
+	printenv, CONFIG_SYS_MAXARGS, 0,	do_env_print,
 	"print environment variables",
 	"[-a]\n    - print [all] values of all environment variables\n"
 #if defined(CONFIG_CMD_NVEDIT_EFI)

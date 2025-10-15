@@ -364,8 +364,17 @@ int mmc_send_tuning(struct mmc *mmc, u32 opcode, int *cmd_error)
 	data.flags = MMC_DATA_READ;
 
 	err = mmc_send_cmd(mmc, &cmd, &data);
-	if (err)
+	if (err) {
+		/*
+		 * Send STOP command after tuning fail to stop transmission on card
+		 * we don't care if this STOP command fails or not
+		 */
+		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
+		cmd.cmdarg = 0;
+		cmd.resp_type = MMC_RSP_R1;
+		mmc_send_cmd(mmc, &cmd, NULL);
 		return err;
+	}
 
 	if (memcmp(data_buf, tuning_block_pattern, size))
 		return -EIO;
@@ -724,7 +733,7 @@ static int mmc_complete_op_cond(struct mmc *mmc)
 }
 
 
-static int mmc_send_ext_csd(struct mmc *mmc, u8 *ext_csd)
+int mmc_send_ext_csd(struct mmc *mmc, u8 *ext_csd)
 {
 	struct mmc_cmd cmd;
 	struct mmc_data data;
@@ -787,8 +796,10 @@ static int __mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value,
 	 * capable of polling by using mmc_wait_dat0, then rely on waiting the
 	 * stated timeout to be sufficient.
 	 */
-	if (ret == -ENOSYS && !send_status)
+	if (ret == -ENOSYS && !send_status) {
 		mdelay(timeout_ms);
+		return 0;
+	}
 
 	/* Finally wait until the card is ready or indicates a failure
 	 * to switch. It doesn't hurt to use CMD13 here even if send_status
@@ -1533,6 +1544,9 @@ static inline int bus_width(uint cap)
 #ifdef MMC_SUPPORTS_TUNING
 static int mmc_execute_tuning(struct mmc *mmc, uint opcode)
 {
+	if (mmc->cfg->ops->execute_tuning)
+		return mmc->cfg->ops->execute_tuning(mmc, opcode);
+
 	return -ENOTSUPP;
 }
 #endif
@@ -1971,12 +1985,6 @@ static int mmc_select_hs400(struct mmc *mmc)
 #endif
 
 #if CONFIG_IS_ENABLED(MMC_HS400_ES_SUPPORT)
-#if !CONFIG_IS_ENABLED(DM_MMC)
-static int mmc_set_enhanced_strobe(struct mmc *mmc)
-{
-	return -ENOTSUPP;
-}
-#endif
 static int mmc_select_hs400es(struct mmc *mmc)
 {
 	int err;
@@ -2002,7 +2010,14 @@ static int mmc_select_hs400es(struct mmc *mmc)
 	if (err)
 		return err;
 
-	return mmc_set_enhanced_strobe(mmc);
+	mmc->strobe_enhanced = 1;
+
+	if (mmc->cfg->ops->hs400_enable_es) {
+		mmc->cfg->ops->hs400_enable_es(mmc, true);
+		return 0;
+	} else {
+		return -ENOTSUPP;
+	}
 }
 #else
 static int mmc_select_hs400es(struct mmc *mmc)
@@ -2139,6 +2154,8 @@ static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps)
 			if (!err)
 				return 0;
 error:
+			mmc->strobe_enhanced = 0;
+
 			mmc_set_signal_voltage(mmc, old_voltage);
 			/* if an error occured, revert to a safer bus mode */
 			mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL,

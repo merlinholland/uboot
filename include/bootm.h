@@ -72,4 +72,9 @@ void board_quiesce_devices(void);
  */
 void switch_to_non_secure_mode(void);
 
+#if defined(CONFIG_TARGET_SS928V100) || defined(CONFIG_TARGET_SS927V100)
+extern int is_quick_boot_enable_otp(void);
+extern void set_scs_finish(void);
+#endif
+
 #endif

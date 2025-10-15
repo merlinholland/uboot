@@ -82,3 +82,8 @@ void crc16_ccitt_wd_buf(const uint8_t *in, uint len,
 	crc = htons(crc);
 	memcpy(out, &crc, sizeof(crc));
 }
+
+const unsigned short *get_crc16_table(void)
+{
+	return &crc16_tab[0];
+}

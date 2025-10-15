@@ -368,6 +368,58 @@ config BOOTDELAY
 
 	  See doc/README.autoboot for details.
 
+menu "vendor_setup"
+
+config VENDOR_MC
+	bool "mc platform solution"
+	default n
+	help
+	  support for mc platform solution
+
+config VENDOR_SPIFLASH_SPEED
+	bool "spinor and spinand  speed "
+	default n
+	depends on FMC_SPI_NAND || FMC_SPI_NOR || FMC_NAND
+	help
+	  Support for flash speed  testing.
+
+config VENDOR_UPGRADE_BY_SEGMENT
+	bool "Upgrade by segment write"
+	default n
+	help
+	  Support for upgrade by segment,this option is used only when the memory
+	  is small and the upgrade file is large. If you are not sure, select n by default.
+
+config BSP_DISABLE_CONSOLE
+	bool "disable console"
+	default n
+	help
+	  The console in uboot is not secure. In formal commercial products,
+	  the input and output of the console should be turned off to avoid being attacked.
+	  Only during debugging, enable the input and output functions of the console.
+
+config BSP_DISABLE_DOWNLOAD
+	bool "disable chip download"
+	default n
+	help
+	  The bare chip download programming function and the network download programming
+	  function are not safe in a commercial environment and may be used by hackers.
+	  Therefore, it needs to be disabled in the official product.
+
+config DELAY_ENVIRONMENT
+	bool "delay load environment"
+	default n
+	help
+	  Normally the environment is loaded from flash when the board is
+	  initialised so that it is available to U-Boot. This inhibits
+	  that so that the environment in flash is not available until
+	  explicitly loaded later by U-Boot code and U-Boot will use the
+	  default environment which defined in code.
+          It is recommended to set following configs if open DELAY_ENVIRONMENT:
+	  	USE_BOOTARGS and BOOTARGS and USE_BOOTCOMMAND and BOOTCOMMAND
+
+endmenu
+
 config USE_BOOTARGS
 	bool "Enable boot arguments"
 	help
@@ -810,6 +862,12 @@ config DEFAULT_FDT_FILE
 	string "Default fdt file"
 	help
 	  This option is used to set the default fdt file to boot OS.
+config KERNEL_LOAD_ADDR
+	hex "Set kernel load address"
+	default 0x42080000
+	help
+	  Set the address of kernel to be loaded, because the single and
+	  big-little kernel should be loaded at diffrent address.
 
 config MISC_INIT_R
 	bool "Execute Misc Init"
@@ -956,11 +1014,20 @@ config SPL_HASH
 
 config TPL_HASH
 	bool # "Support hashing API (SHA1, SHA256, etc.)"
+	default n if VENDOR_MC
 	help
 	  This provides a way to hash data in memory using various supported
 	  algorithms (such as SHA1, MD5, CRC32). The API is defined in hash.h
 	  and the algorithms it supports are defined in common/hash.c. See
 	  also CMD_HASH for command-line access.
+
+config SECURE_BOOT_SUPPORT
+	bool "Support secure boot"
+	default n
+	help
+	  This provides a way to verify kernel and other images in U-boot.
+	  This config depends on CONFIG_CIPHER_ENABLE.
+	  See include/configs/${chip_type}.h to check if define CONFIG_CIPHER_ENABLE.
 
 endmenu
 

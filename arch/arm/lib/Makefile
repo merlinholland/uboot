@@ -60,6 +60,8 @@ ifndef CONFIG_SYSRESET
 obj-y	+= reset.o
 endif
 
+obj-y += process.o
+
 obj-y	+= cache.o
 obj-$(CONFIG_SYS_ARM_CACHE_CP15)	+= cache-cp15.o
 

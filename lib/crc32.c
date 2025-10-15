@@ -255,7 +255,18 @@ uint32_t crc32_wd(uint32_t crc, const unsigned char *buf, uInt len,
 
 	return crc;
 }
+#ifdef CONFIG_BSP_NAND_SPL
+void * crc_output(void *dest, const void *src, size_t count)
+{
+	char *d8, *s8;
+	d8 = (char *)dest;
+	s8 = (char *)src;
+	while (count--)
+		*d8++ = *s8++;
 
+	return dest;
+}
+#endif
 void crc32_wd_buf(const unsigned char *input, unsigned int ilen,
 		unsigned char *output, unsigned int chunk_sz)
 {
@@ -263,5 +274,9 @@ void crc32_wd_buf(const unsigned char *input, unsigned int ilen,
 
 	crc = crc32_wd(0, input, ilen, chunk_sz);
 	crc = htonl(crc);
+#ifdef CONFIG_BSP_NAND_SPL
+	crc_output(output, &crc, sizeof(crc));
+#else
 	memcpy(output, &crc, sizeof(crc));
+#endif
 }

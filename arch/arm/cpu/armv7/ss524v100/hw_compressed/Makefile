@@ -1,0 +1,228 @@
+################################################################################
+
+PWD           = $(shell pwd)
+HW_CROSS_COMPILE = $(CROSS_COMPILE)
+TOPDIR        =
+
+################################################################################
+CC       := $(HW_CROSS_COMPILE)gcc
+AR       := $(HW_CROSS_COMPILE)ar
+LD       := $(HW_CROSS_COMPILE)ld
+OBJCOPY  := $(HW_CROSS_COMPILE)objcopy
+
+
+################################################################################
+BOOT     := u-boot-$(SOC)
+TEXTBASE := 0x40700000
+
+CFLAGS   :=-Os -fno-builtin -ffreestanding \
+	-D__KERNEL__ -DTEXT_BASE=$(TEXTBASE) \
+	-I$(TOPDIR)/include \
+	-I$(TOPDIR)/drivers/ddr/vendor/default \
+	-I$(TOPDIR)/drivers/ddr/vendor/$(SOC) \
+	-I$(TOPDIR)/arch/arm/include \
+	-fno-pic -fno-aggressive-loop-optimizations \
+	-mno-unaligned-access -ffunction-sections \
+	-fdata-sections -fno-common -ffixed-r9    \
+	-fno-common -pipe -march=armv7-a \
+	-Wall -Wstrict-prototypes -fno-stack-protector \
+	-D__LINUX_ARM_ARCH__=7 -D__ARM_ARCH__=7 -D__ARM__ \
+	-DCONFIG_MMC -DDDR_TRAINING_MEM_FUNC \
+	$(MKFLAGS) -fno-strict-aliasing
+
+################################################################################
+-include ${TOPDIR}/.config
+ifeq (${CONFIG_BSP_NAND_SPL},y)
+START := start.o
+COBJS := lowlevel_init_v300.o \
+	init_regs.o \
+	uart.o \
+	ddr_training_impl.o \
+	ddr_ac_training.o \
+	ddr_dcc_training.o \
+	ddr_lpca_training.o \
+	ddr_mpr_training.o \
+	ddr_wl_training.o \
+	ddr_training_ctl.o \
+	ddr_training_boot.o \
+	ddr_training_custom.o \
+	ddr_training_console.o \
+	crc32.o \
+	startup.o \
+	image_data.o \
+	emmc_boot.o \
+	div0.o \
+	reset.o \
+	mmu.o
+
+SSRC  := arch/arm/cpu/armv7/$(SOC)/start.S \
+	arch/arm/cpu/armv7/$(SOC)/reset.S \
+	arch/arm/cpu/armv7/$(SOC)/uart.S \
+	arch/arm/mach-vendor/init_regs.c \
+	arch/arm/cpu/armv7/$(SOC)/lowlevel_init_v300.c \
+	drivers/ddr/vendor/default/ddr_training_impl.c \
+	drivers/ddr/vendor/default/ddr_ac_training.c \
+	drivers/ddr/vendor/default/ddr_dcc_training.c \
+	drivers/ddr/vendor/default/ddr_lpca_training.c \
+	drivers/ddr/vendor/default/ddr_mpr_training.c \
+	drivers/ddr/vendor/default/ddr_wl_training.c \
+	drivers/ddr/vendor/default/ddr_training_ctl.c \
+	drivers/ddr/vendor/default/ddr_training_boot.c \
+	drivers/ddr/vendor/default/ddr_training_console.c \
+	drivers/ddr/vendor/$(SOC)/ddr_training_custom.c \
+	arch/arm/cpu/armv7/$(SOC)/emmc_boot.c \
+	arch/arm/cpu/armv7/$(SOC)/mci_boot.c \
+	arch/arm/lib/div0.c \
+	arch/arm/cpu/armv7/$(SOC)/mmu.S \
+	lib/unlzma.c \
+	lib/crc32.c
+else
+START := start.o
+COBJS := lowlevel_init_v300.o \
+	init_regs.o \
+	uart.o \
+	ddr_training_impl.o \
+	ddr_ac_training.o \
+	ddr_dcc_training.o \
+	ddr_lpca_training.o \
+	ddr_mpr_training.o \
+	ddr_wl_training.o \
+	ddr_training_ctl.o \
+	ddr_training_boot.o \
+	ddr_training_custom.o \
+	ddr_training_console.o \
+	startup.o \
+	image_data.o \
+	emmc_boot.o \
+	div0.o \
+	reset.o \
+	mmu.o
+SSRC  := arch/arm/cpu/armv7/$(SOC)/start.S \
+	arch/arm/cpu/armv7/$(SOC)/reset.S \
+	arch/arm/cpu/armv7/$(SOC)/uart.S \
+	arch/arm/mach-vendor/init_regs.c \
+	arch/arm/cpu/armv7/$(SOC)/lowlevel_init_v300.c \
+	drivers/ddr/vendor/default/ddr_training_impl.c \
+	drivers/ddr/vendor/default/ddr_ac_training.c \
+	drivers/ddr/vendor/default/ddr_dcc_training.c \
+	drivers/ddr/vendor/default/ddr_lpca_training.c \
+	drivers/ddr/vendor/default/ddr_mpr_training.c \
+	drivers/ddr/vendor/default/ddr_wl_training.c \
+	drivers/ddr/vendor/default/ddr_training_ctl.c \
+	drivers/ddr/vendor/default/ddr_training_boot.c \
+	drivers/ddr/vendor/default/ddr_training_console.c \
+	drivers/ddr/vendor/$(SOC)/ddr_training_custom.c \
+	arch/arm/cpu/armv7/$(SOC)/emmc_boot.c \
+	arch/arm/cpu/armv7/$(SOC)/mci_boot.c \
+	arch/arm/lib/div0.c \
+	arch/arm/cpu/armv7/$(SOC)/mmu.S \
+	lib/unlzma.c
+endif
+
+REG := $(wildcard $(TOPDIR)/*.reg $(TOPDIR)/.reg)
+SRC := $(notdir $(SSRC))
+
+################################################################################
+.PHONY: $(BOOT).bin
+ifeq (${CONFIG_BSP_NAND_SPL},y)
+$(BOOT).bin: $(BOOT).tmp regfile crc32_check
+	@dd if=./$(BOOT).tmp of=./tmp1 bs=1 count=64 2>/dev/null
+	@dd if=$(REG) of=./tmp2 bs=8192 conv=sync 2>/dev/null
+	@dd if=./crc32_value of=./tmp3 bs=16 conv=sync 2>/dev/null
+	@dd if=./$(BOOT).tmp of=./tmp4 bs=1 skip=8272 2>/dev/null
+	@cat tmp1 tmp2 tmp3 tmp4 > $(BOOT).bin
+	@rm -f tmp1 tmp2 tmp3 tmp4 crc32_value
+	@chmod 754 $(BOOT).bin
+	@cp -fv $@ $(TOPDIR)
+	@echo $(BOOT).bin is Ready.
+else
+$(BOOT).bin: $(BOOT).tmp regfile
+	@dd if=./$(BOOT).tmp of=./tmp1 bs=1 count=64 2>/dev/null
+	@dd if=$(REG) of=./tmp2 bs=8192 conv=sync 2>/dev/null
+	@dd if=./$(BOOT).tmp of=./tmp3 bs=1 skip=8256 2>/dev/null
+	@cat tmp1 tmp2 tmp3 > $(BOOT).bin
+	@rm -f tmp1 tmp2 tmp3
+	@chmod 754 $(BOOT).bin
+	@cp -fv $@ $(TOPDIR)
+	@echo $(BOOT).bin is Ready.
+endif
+
+$(BOOT).tmp: $(BOOT).elf
+	$(OBJCOPY) -O srec $< $(BOOT).srec
+	$(OBJCOPY) -j .text -O binary $< $(BOOT).text
+	$(OBJCOPY) --gap-fill=0xff -O binary $< $@
+
+ifeq (${CONFIG_BSP_NAND_SPL},y)
+$(BOOT).elf: image_data.lzma $(SRC) $(START) $(COBJS)
+	$(CC) -E -DCONFIG_BSP_NAND_SPL -P - <u-boot.lds -o u-boot-spl.lds.tmp
+	$(LD) -Bstatic -T u-boot-spl.lds.tmp -Ttext $(TEXTBASE) $(START) \
+		--gc-sections $(COBJS) -Map $(BOOT).map -o $@
+	$(OBJDUMP) -d  $@ > $@.asm
+	rm -rf u-boot-spl.lds.tmp
+else
+$(BOOT).elf: image_data.lzma $(SRC) $(START) $(COBJS)
+	$(CC) -E -P - <u-boot.lds -o u-boot.lds.tmp
+	$(LD) -Bstatic -T u-boot.lds.tmp -Ttext $(TEXTBASE) $(START) \
+	    --gc-sections $(COBJS) -Map $(BOOT).map -o $@
+	$(OBJDUMP) -d  $@ > $@.asm
+	rm -rf u-boot.lds.tmp
+endif
+
+
+
+.PHONY: regfile
+regfile:
+	@if [ "$(words $(REG))" = "0" ]; then ( \
+		echo '***' Need '.reg' or '*.reg' file in directory $(TOPDIR); \
+		exit 1; \
+	) fi
+	@if [ "$(words $(REG))" != "1" ]; then ( \
+		echo '***' Found multi '.reg' or '*.reg' file in directory $(TOPDIR); \
+		echo '***' Files: $(notdir $(REG)); \
+		exit 1; \
+	) fi
+
+ifeq (${CONFIG_BSP_NAND_SPL},y)
+crc32_check:
+ifneq (/usr/bin/crc32, $(wildcard /usr/bin/crc32))
+	echo 'deadbeef' > crc32_value
+	echo -e '\033[32m if you want to use the function of nand-spl, you shell install crc32 in your machine, otherwise you can ignore this message.\033[0m'
+else
+	crc32 image_data.lzma > crc32_value
+endif
+endif
+################################################################################
+start.o: start.S
+	$(CC) -D__ASSEMBLY__ $(CFLAGS) -o $@ $< -c
+
+image_data.lzma: $(BINIMAGE)
+	lzma -fkzc -7 $< > $@
+#	cp -f $<  $@
+
+%.o: %.c
+	$(CC) $(CFLAGS) -Wall -Wstrict-prototypes \
+		-fno-stack-protector -o $@ $< -c
+
+%.o: %.S
+	$(CC) -D__ASSEMBLY__ $(CFLAGS) -o $@ $< -c
+
+image_data.o: image_data.S image_data.lzma
+	$(CC) -D__ASSEMBLY__ $(CFLAGS) -o $@ $< -c
+
+#############################################################################
+
+$(SRC):
+	ln -sf ../../../../../../$(filter %/$@,$(SSRC)) $@
+################################################################################
+TMPS := $(COBJS) start.o $(SRC) \
+	$(BOOT).map $(BOOT).elf $(BOOT).srec $(BOOT).bin $(BOOT).text $(BOOT).tmp \
+	image_data.lzma $(BOOT).elf.asm
+
+distclean: clean
+
+clean:
+	-rm -f $(TMPS)
+
+################################################################################
+.PHONY: clean
+################################################################################

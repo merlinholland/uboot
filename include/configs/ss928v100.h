@@ -66,9 +66,9 @@
 #ifdef CONFIG_GMACV300_ETH
 #define CONFIG_GMAC_NUMS        1
 #define CONFIG_GMAC_PHY0_ADDR     1
-#define CONFIG_GMAC_PHY0_INTERFACE_MODE	2 /* rgmii 2, rmii 1, mii 0 */
+#define CONFIG_GMAC_PHY0_INTERFACE_MODE	1 /* rgmii 2, rmii 1, mii 0 */
 #define CONFIG_GMAC_PHY1_ADDR     3
-#define CONFIG_GMAC_PHY1_INTERFACE_MODE	2 /* rgmii 2, rmii 1, mii 0 */
+#define CONFIG_GMAC_PHY1_INTERFACE_MODE	1 /* rgmii 2, rmii 1, mii 0 */
 #define CONFIG_GMAC_DESC_4_WORD
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN 1
 #endif

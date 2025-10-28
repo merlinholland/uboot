@@ -23,14 +23,8 @@ a.进入uboot源代码目录后，执行以下操作:
     生成的u-boot-ss928v100.bin即为“快速启动”使用的u-boot镜像
 
 b.对于“非安全启动”方案，还需要进入boot目录，执行以下操作来制作 Boot Image：
-    cd boot
-    tar xf boot.tar.gz
-    cd boot/gsl/
+    cd boot;tar xf boot.tar.gz;cd boot/gsl/
     将cfg.mk的第7行改为TEXT_BASE = $(shell printf "%#x" $$(($(RAM_BASE) + $(TEXT_OFST))))
-    make CHIP=ss928v100
-    cd ../image_map/
-    cp ../gsl/pub/gsl.bin ./
-    cp ../../../u-boot-ss928v100.bin ./u-boot-original.bin 
-    cp ../../../.reg ./
+    make CHIP=ss928v100;cd ../image_map/;cp ../gsl/pub/gsl.bin ./;cp ../../../u-boot-ss928v100.bin ./u-boot-original.bin;cp ../../../.reg ./
 	python3 oem/oem_quick_build.py
 	image/oem/下生成的boot_image.bin即为“非安全启动”使用的Boot Image。
